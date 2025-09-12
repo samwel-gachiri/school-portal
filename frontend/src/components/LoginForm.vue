@@ -119,13 +119,6 @@
               </span>
             </button>
           </div>
-
-          <!-- Helper Text -->
-          <div class="text-center">
-            <p class="text-xs text-gray-500">
-              Default credentials: admin / password123
-            </p>
-          </div>
         </form>
       </div>
 
