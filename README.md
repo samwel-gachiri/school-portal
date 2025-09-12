@@ -88,7 +88,7 @@ DB_PORT=3306
 DB_NAME=your_database_name
 DB_USER=your_username
 DB_PASSWORD=your_password
-DB_SSL_CA_PATH=./certs/ca-certificate.crt
+DB_SSL_CA_PATH=./certs/ca.pem
 JWT_SECRET=your-super-secret-jwt-key
 OPENAI_API_KEY=your-openai-api-key
 ```
