@@ -105,9 +105,9 @@ temp/
 *.sw?
 
 # Database certificates
-certs/
-*.crt
-*.pem
+# certs/
+# *.crt
+# *.pem
 
 # Uploads
 uploads/
