@@ -20,10 +20,5 @@
                 }
             ]
         }
-    ],
-    "env": {
-        "VITE_API_BASE_URL": "@vite_api_base_url",
-        "VITE_APP_NAME": "School Fee Payment Portal",
-        "VITE_ENVIRONMENT": "production"
-    }
+    ]
 }
