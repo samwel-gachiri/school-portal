@@ -54,7 +54,7 @@ jest.mock('fs/promises', () => ({
 }));
 
 // Global test utilities
-global.createMockRequest = (overrides = {}) => ({
+(global as any).createMockRequest = (overrides = {}) => ({
   body: {},
   params: {},
   query: {},
@@ -63,7 +63,7 @@ global.createMockRequest = (overrides = {}) => ({
   ...overrides,
 });
 
-global.createMockResponse = () => {
+(global as any).createMockResponse = () => {
   const res: any = {};
   res.status = jest.fn().mockReturnValue(res);
   res.json = jest.fn().mockReturnValue(res);
@@ -71,4 +71,4 @@ global.createMockResponse = () => {
   return res;
 };
 
-global.createMockNext = () => jest.fn();
+(global as any).createMockNext = () => jest.fn();
