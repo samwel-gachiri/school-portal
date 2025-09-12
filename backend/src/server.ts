@@ -40,7 +40,9 @@ class Server {
     // CORS configuration
     this.app.use(cors({
       origin: config.server.nodeEnv === 'production' 
-        ? ['https://your-domain.com'] // Replace with your production domain
+        ? [
+            'https://school-portal-self.vercel.app', // Replace with your Vercel domain
+          ]
         : ['http://localhost:5173', 'http://127.0.0.1:5173'],
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
