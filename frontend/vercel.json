@@ -2,7 +2,7 @@
     "buildCommand": "npm run build:prod",
     "outputDirectory": "dist",
     "framework": "vite",
-    "installCommand": "npm install --no-optional",
+    "installCommand": "npm ci",
     "devCommand": "npm run dev",
     "rewrites": [
         {
