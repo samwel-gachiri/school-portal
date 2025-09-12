@@ -39,7 +39,6 @@ RUN npm ci --only=production && npm cache clean --force
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 
 # Copy necessary files
-COPY --chown=nodejs:nodejs .env.example .env
 COPY --chown=nodejs:nodejs ecosystem.config.js ./
 
 # Create necessary directories

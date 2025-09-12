@@ -1,12 +1,19 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 
-// Load environment variables from the backend directory
+// Load environment variables from the backend directory if .env file exists
 // Use override: true to prioritize .env file over system environment variables
-dotenv.config({ 
-  path: path.join(__dirname, '../../.env'),
-  override: true 
-});
+const envPath = path.join(__dirname, '../../.env');
+if (fs.existsSync(envPath)) {
+  dotenv.config({ 
+    path: envPath,
+    override: true 
+  });
+  console.log('Loaded environment variables from .env file');
+} else {
+  console.log('No .env file found, using system environment variables');
+}
 
 export const config = {
   server: {
