@@ -45,6 +45,9 @@ COPY --chown=nodejs:nodejs ecosystem.config.js ./
 # Create necessary directories
 RUN mkdir -p uploads logs .cert && chown -R nodejs:nodejs uploads logs .cert
 
+# Copy certificate file 
+COPY --chown=nodejs:nodejs .cert/ca.pem ./.cert/ca.pem
+
 # Switch to non-root user
 USER nodejs
 
