@@ -8,9 +8,27 @@ export class DatabaseConnection {
   private pool: mysql.Pool;
 
   private constructor() {
-    const sslConfig = config.db.sslCaPath ? {
-      ca: fs.readFileSync(path.resolve(config.db.sslCaPath))
-    } : undefined;
+    let sslConfig: any = undefined;
+    
+    if (config.db.sslCaPath) {
+      try {
+        const certPath = path.resolve(config.db.sslCaPath);
+        if (fs.existsSync(certPath)) {
+          sslConfig = {
+            ca: fs.readFileSync(certPath)
+          };
+          console.log('SSL certificate loaded from:', certPath);
+        } else {
+          console.warn('SSL certificate file not found:', certPath);
+          console.log('Attempting SSL connection without certificate file...');
+          sslConfig = true; // Enable SSL but without specific CA
+        }
+      } catch (error) {
+        console.error('Error loading SSL certificate:', error);
+        console.log('Attempting SSL connection without certificate file...');
+        sslConfig = true; // Enable SSL but without specific CA
+      }
+    }
 
     this.pool = mysql.createPool({
       host: config.db.host,
