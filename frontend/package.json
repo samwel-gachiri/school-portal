@@ -29,8 +29,6 @@
         "vue-toastification": "^2.0.0-rc.5"
     },
     "devDependencies": {
-        "@esbuild/win32-x64": "^0.25.9",
-        "@rollup/rollup-win32-x64-msvc": "^4.0.0",
         "@types/node": "^20.10.0",
         "@vitejs/plugin-vue": "^4.5.0",
         "@vue/eslint-config-typescript": "^12.0.0",
@@ -46,5 +44,9 @@
         "vite": "^5.0.0",
         "vitest": "^1.0.0",
         "vue-tsc": "^1.8.22"
+    },
+    "optionalDependencies": {
+        "@esbuild/win32-x64": "^0.25.9",
+        "@rollup/rollup-win32-x64-msvc": "^4.0.0"
     }
 }
