@@ -16,7 +16,7 @@
         "lint:fix": "eslint src/**/*.ts --fix",
         "clean": "rimraf dist",
         "prebuild": "npm run clean",
-        "postbuild": "xcopy migrations dist\\migrations\\ /E /I /Y && copy ecosystem.config.js dist\\",
+        "postbuild": "cp -r migrations dist/ && cp ecosystem.config.js dist/",
         "docker:build": "docker build -t school-portal-backend .",
         "docker:run": "docker run -p 3000:3000 --env-file .env school-portal-backend"
     },

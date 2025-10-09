@@ -38,6 +38,28 @@
               <ClockIcon class="h-5 w-5 mr-2" />
               History
             </router-link>
+            
+            <router-link
+              to="/manual-fees"
+              class="nav-link"
+              :class="{ 'nav-link-active': $route.name === 'manual-fees' }"
+            >
+              <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+              </svg>
+              Manual Entry
+            </router-link>
+            
+            <router-link
+              to="/receipts"
+              class="nav-link"
+              :class="{ 'nav-link-active': $route.name === 'receipts' }"
+            >
+              <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.72 13.829c-.24.06-.48.12-.72.18m6.72-4.829c-.24.06-.48.12-.72.18m6.72-4.829c-.24.06-.48.12-.72.18m6.72-4.829c-.24.06-.48.12-.72.18M12 2.25c-2.16 0-4.5.47-6.72 1.41C3.06 4.41 2.25 5.16 2.25 6v12c0 .84.81 1.59 3.06 2.34 2.22.94 4.56 1.41 6.72 1.41s4.5-.47 6.72-1.41c2.25-.75 3.06-1.5 3.06-2.34V6c0-.84-.81-1.59-3.06-2.34C16.5 2.78 14.16 2.25 12 2.25z"></path>
+              </svg>
+              Receipts
+            </router-link>
           </div>
         </div>
         
@@ -136,6 +158,30 @@
         >
           <ClockIcon class="h-5 w-5 mr-3" />
           History
+        </router-link>
+        
+        <router-link
+          to="/manual-fees"
+          class="mobile-nav-link"
+          :class="{ 'mobile-nav-link-active': $route.name === 'manual-fees' }"
+          @click="showMobileMenu = false"
+        >
+          <svg class="h-5 w-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+          </svg>
+          Manual Entry
+        </router-link>
+        
+        <router-link
+          to="/receipts"
+          class="mobile-nav-link"
+          :class="{ 'mobile-nav-link-active': $route.name === 'receipts' }"
+          @click="showMobileMenu = false"
+        >
+          <svg class="h-5 w-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.72 13.829c-.24.06-.48.12-.72.18m6.72-4.829c-.24.06-.48.12-.72.18m6.72-4.829c-.24.06-.48.12-.72.18m6.72-4.829c-.24.06-.48.12-.72.18M12 2.25c-2.16 0-4.5.47-6.72 1.41C3.06 4.41 2.25 5.16 2.25 6v12c0 .84.81 1.59 3.06 2.34 2.22.94 4.56 1.41 6.72 1.41s4.5-.47 6.72-1.41c2.25-.75 3.06-1.5 3.06-2.34V6c0-.84-.81-1.59-3.06-2.34C16.5 2.78 14.16 2.25 12 2.25z"></path>
+          </svg>
+          Receipts
         </router-link>
       </div>
       

@@ -39,7 +39,7 @@ class ApiService {
         if (error.response?.status === 401) {
           // Token expired or invalid
           localStorage.removeItem('auth_token')
-          window.location.href = '/login'
+          // window.location.href = '/login'
         }
         return Promise.reject(error)
       }
@@ -177,23 +177,40 @@ export const studentApi = {
     apiService.post('/students/manual-match', { paymentId, admissionNumber, confirmed })
 }
 
+// Manual Fees API
+export const manualFeesApi = {
+  searchStudents: (query: string) =>
+    apiService.get('/manual-fees/students/search', { query }),
+  
+  getStudentDetails: (adm: number) =>
+    apiService.get(`/manual-fees/students/${adm}`),
+  
+  validateReference: (bank: string, ref: string) =>
+    apiService.post('/manual-fees/validate-reference', { bank, ref }),
+  
+  createPayment: (paymentData: any) =>
+    apiService.post('/manual-fees/payments', paymentData),
+  
+  getBankTypes: () =>
+    apiService.get('/manual-fees/bank-types'),
+  
+  checkDuplicatePayment: (params: { adm: number; ref: string; bank: string }) =>
+    apiService.get('/manual-fees/check-duplicate', params)
+}
+
 // Payment API
 export const paymentApi = {
-  validateBatch: (paymentRecords: any[]) =>
-    apiService.post('/payments/validate-batch', { paymentRecords }, {
-      timeout: 60000 // 1 minute for validation
-    }),
-  
-  processBatch: (paymentRecords: any[], confirmed: boolean = true) =>
-    apiService.post('/payments/process-batch', { paymentRecords, confirmed }, {
-      timeout: 180000 // 3 minutes for batch processing
-    }),
-  
-  getHistory: (limit: number = 50, offset: number = 0) =>
-    apiService.get('/payments/history', { limit, offset }),
+  getHistory: (limit: number = 50, offset: number = 0, userId?: number) =>
+    apiService.get('/payments/history', { limit, offset, userId }),
   
   getStatistics: (startDate?: string, endDate?: string) =>
-    apiService.get('/payments/statistics', { startDate, endDate })
+    apiService.get('/payments/statistics', { startDate, endDate }),
+  
+  validateBatch: (paymentRecords: any[]) =>
+    apiService.post('/payments/validate-batch', { paymentRecords }),
+  
+  processBatch: (paymentRecords: any[], confirmed: boolean = false) =>
+    apiService.post('/payments/process-batch', { paymentRecords, confirmed })
 }
 
 export default apiService

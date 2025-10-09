@@ -17,14 +17,10 @@ export const useAuthStore = defineStore('auth', () => {
   // Actions
   const login = async (username: string, password: string): Promise<boolean> => {
     isLoading.value = true
-    error.value = null
+    error.value = null // Clear any previous errors
 
     try {
-      console.log('Attempting login with:', { username, password: password ? '[HIDDEN]' : 'NOT SET' })
-      
       const response = await authApi.login(username, password)
-      
-      console.log('Login response:', response)
       
       if (response.success && response.data) {
         token.value = response.data.token
@@ -33,15 +29,16 @@ export const useAuthStore = defineStore('auth', () => {
         // Store token in localStorage
         localStorage.setItem('auth_token', response.data.token)
         
-        console.log('Login successful, user:', user.value)
+        // Setup token expiration
+        setupTokenExpiration()
+        
         return true
       } else {
         error.value = response.error?.message || 'Login failed'
-        console.error('Login failed:', response.error)
         return false
       }
     } catch (err) {
-      console.error('Login exception:', err)
+      console.error('Login error:', err)
       error.value = err instanceof Error ? err.message : 'Login failed'
       return false
     } finally {
@@ -118,12 +115,11 @@ export const useAuthStore = defineStore('auth', () => {
             logout()
           }, timeUntilExpiration)
         } else {
-          // Token already expired
-          logout()
+          // Token already expired - don't logout immediately, let verifyToken handle it
         }
       } catch (err) {
         console.error('Error parsing token:', err)
-        logout()
+        // Don't logout on parsing error, just log it
       }
     }
   }

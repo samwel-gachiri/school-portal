@@ -27,7 +27,10 @@ const showNavBar = computed(() => {
 
 // Initialize auth on app mount
 onMounted(() => {
-  authStore.setupTokenExpiration()
+  // Only setup token expiration if we have a token
+  if (localStorage.getItem('auth_token')) {
+    authStore.setupTokenExpiration()
+  }
   ErrorHandler.setupGlobalErrorHandlers()
 })
 </script>

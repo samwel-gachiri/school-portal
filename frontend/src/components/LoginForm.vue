@@ -133,7 +133,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -162,13 +162,17 @@ const handleSubmit = async () => {
     const success = await authStore.login(form.value.username, form.value.password)
     
     if (success) {
-      // Show success message briefly
-      console.log('Login successful, redirecting...')
+      // Wait for auth state to be fully updated
+      await nextTick()
       
-      // Small delay to show success state
+      // Small delay to ensure state is propagated
       setTimeout(() => {
-        router.push('/')
-      }, 100)
+        try {
+          router.push('/')
+        } catch (navError) {
+          console.error('Navigation error:', navError)
+        }
+      }, 200)
     }
   } catch (err) {
     console.error('Login error:', err)

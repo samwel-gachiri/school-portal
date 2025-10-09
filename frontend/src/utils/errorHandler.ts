@@ -186,14 +186,23 @@ export class ErrorHandler {
   }
 
   static setupGlobalErrorHandlers() {
-    // Handle unhandled promise rejections
+    // Handle unhandled promise rejections - only show toast for critical errors
     window.addEventListener('unhandledrejection', (event) => {
       console.error('Unhandled promise rejection:', event.reason)
-      this.toast.error('An unexpected error occurred. Please try again.')
+      
+      // Only show toast for network errors or critical failures
+      const reason = event.reason
+      if (reason && typeof reason === 'object' && 'message' in reason) {
+        const message = (reason as any).message
+        if (message?.includes('Network') || message?.includes('fetch')) {
+          this.toast.error('Network error occurred. Please check your connection.')
+        }
+      }
+      
       event.preventDefault()
     })
 
-    // Handle global JavaScript errors
+    // Handle global JavaScript errors - only show toast for critical errors
     window.addEventListener('error', (event) => {
       console.error('Global error:', {
         message: event.message,
@@ -203,7 +212,10 @@ export class ErrorHandler {
         error: event.error
       })
       
-      this.toast.error('An unexpected error occurred. Please refresh the page.')
+      // Only show toast for critical errors, not for missing images/scripts
+      if (event.message && !event.message.includes('Loading') && !event.message.includes('Script error')) {
+        this.toast.error('An unexpected error occurred. Please refresh the page.')
+      }
     })
   }
 }

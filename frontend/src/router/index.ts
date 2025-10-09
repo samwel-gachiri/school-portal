@@ -35,6 +35,18 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/manual-fees',
+      name: 'manual-fees',
+      component: () => import('@/views/ManualFeeView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/receipts',
+      name: 'receipts',
+      component: () => import('@/views/ReceiptsView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('@/views/NotFoundView.vue')

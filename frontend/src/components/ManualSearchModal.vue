@@ -120,10 +120,10 @@
                         </div>
                         <div class="flex items-center space-x-4 mt-1">
                           <span class="text-xs text-gray-500">
-                            Class {{ student.class }}{{ student.stream ? ` Stream ${student.stream}` : '' }}
+                            {{ student.class_name }}
                           </span>
                           <span class="text-xs text-gray-500">
-                            Current Balance: KSh {{ student.currentBalance.toLocaleString() }}
+                            Current Balance: KSh {{ student.balance.toLocaleString() }}
                           </span>
                         </div>
                       </div>
@@ -174,7 +174,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { studentApi } from '@/services/api'
+import { manualFeesApi } from '@/services/api'
 import { useToast } from 'vue-toastification'
 import type { ExtractedPayment, StudentMatch } from '@/types'
 import {
@@ -227,14 +227,10 @@ const performSearch = async () => {
   isSearching.value = true
   
   try {
-    const response = await studentApi.search(
-      searchQuery.value.trim(),
-      searchType.value,
-      20 // Limit results
-    )
+    const response = await manualFeesApi.searchStudents(searchQuery.value.trim())
     
     if (response.success && response.data) {
-      searchResults.value = response.data.students
+      searchResults.value = response.data
     } else {
       throw new Error(response.error?.message || 'Search failed')
     }
