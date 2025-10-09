@@ -69,10 +69,25 @@ export class DatabaseConnection {
 
   public async query<T = any>(sql: string, params?: any[]): Promise<T[]> {
     try {
-      const [rows] = await this.pool.execute(sql, params);
-      return rows as T[];
+      if (params && params.length > 0) {
+        const [rows] = await this.pool.execute(sql, params);
+        return rows as T[];
+      } else {
+        const [rows] = await this.pool.query(sql);
+        return rows as T[];
+      }
     } catch (error) {
       console.error('Database query error:', error);
+      throw error;
+    }
+  }
+
+  public async queryRaw<T = any>(sql: string): Promise<T[]> {
+    try {
+      const [rows] = await this.pool.query(sql);
+      return rows as T[];
+    } catch (error) {
+      console.error('Database raw query error:', error);
       throw error;
     }
   }

@@ -11,6 +11,8 @@ import uploadRoutes from './routes/upload';
 import processRoutes from './routes/process';
 import studentRoutes from './routes/students';
 import paymentRoutes from './routes/payments';
+import manualFeesRoutes from './routes/manualFees';
+import receiptsRoutes from './routes/receipts';
 
 const app = express();
 const healthService = new HealthService();
@@ -57,6 +59,8 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/process', processRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/manual-fees', manualFeesRoutes);
+app.use('/api/receipts', receiptsRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
