@@ -5,6 +5,7 @@ import morgan from "morgan";
 import { config } from "./config/env";
 import { DatabaseConnection } from "./config/database";
 import { HealthService } from "./services/healthService";
+import { MigrationService } from "./services/migrationService";
 import { AuthService } from "./services/authService";
 import { globalErrorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { stream } from "./utils/logger";
@@ -127,11 +128,26 @@ class Server {
 
       console.log("✅ Database connection established");
 
-      // Check required tables
+      // Check required tables and auto-run migrations if needed
       const tableCheck = await this.healthService.checkDatabaseTables();
       if (!tableCheck.tablesExist) {
-        console.warn("⚠️  Missing database tables:", tableCheck.missingTables);
-        console.log("Please run database migrations: npm run migrate");
+        console.log("🔧 Missing database tables detected, running migrations...");
+        console.log("Missing tables:", tableCheck.missingTables);
+        
+        const migrationService = new MigrationService();
+        
+        // Use fallback migration method directly (more reliable than Liquibase CLI)
+        console.log("🔄 Running direct SQL migrations...");
+        const migrationResult = await migrationService.runFallbackMigrations();
+        
+        if (migrationResult.success) {
+          console.log("✅ Database migrations completed successfully");
+        } else {
+          console.error("❌ Migration failed:", migrationResult.message);
+          if (config.server.nodeEnv === "production") {
+            throw new Error("Database migration failed");
+          }
+        }
       } else {
         console.log("✅ All required database tables exist");
       }
