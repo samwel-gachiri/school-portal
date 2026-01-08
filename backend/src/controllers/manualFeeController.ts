@@ -104,15 +104,9 @@ export const manualFeeController = {
 
   async createPayment(req: AuthenticatedRequest, res: Response) {
     try {
-      console.log('ManualFeeController: createPayment called');
-      console.log('Request headers:', JSON.stringify(req.headers, null, 2));
-      console.log('Request user:', req.user);
-      
       const { adm, bank, ref, amount, date } = req.body;
       const userId = req.user?.user_id;
       const username = req.user?.username;
-
-      console.log('Extracted data:', { adm, bank, ref, amount, date, userId, username });
 
       // Validate required fields
       if (!adm || !bank || !amount || !date) {
@@ -123,7 +117,6 @@ export const manualFeeController = {
       }
 
       if (!userId || !username) {
-        console.log('User authentication failed - userId or username missing');
         return res.status(401).json({
           success: false,
           message: "User authentication required",

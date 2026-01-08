@@ -158,7 +158,6 @@ export class FileService {
         
         if (stats.mtime.getTime() < cutoffTime) {
           await this.deleteFile(filePath);
-          console.log(`Cleaned up old file: ${file}`);
         }
       }
     } catch (error) {

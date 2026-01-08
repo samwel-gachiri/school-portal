@@ -102,28 +102,19 @@ class ApiService {
     }
   }
 
-  // File upload method
-  async uploadFile<T>(url: string, file: File, onProgress?: (progress: number) => void): Promise<ApiResponse<T>> {
+  // File download/blob method
+  async getBlob(url: string): Promise<Blob> {
     try {
-      const formData = new FormData()
-      formData.append('image', file)
-
-      const response = await this.api.post(url, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
-        onUploadProgress: (progressEvent) => {
-          if (onProgress && progressEvent.total) {
-            const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-            onProgress(progress)
-          }
-        }
-      })
-
-      return this.handleResponse<T>(response)
+      const response = await this.api.get(url, { responseType: 'blob' })
+      return response.data
     } catch (error) {
-      return this.handleError(error)
+      throw error
     }
+  }
+
+  // Get base URL for direct fetch calls
+  getBaseURL(): string {
+    return this.api.defaults.baseURL || ''
   }
 }
 
@@ -211,6 +202,36 @@ export const paymentApi = {
   
   processBatch: (paymentRecords: any[], confirmed: boolean = false) =>
     apiService.post('/payments/process-batch', { paymentRecords, confirmed })
+}
+
+// Receipts API
+export const receiptsApi = {
+  getUnprinted: () =>
+    apiService.get('/receipts/unprinted'),
+  
+  getByStudent: (adm: number) =>
+    apiService.get(`/receipts/student/${adm}`),
+  
+  getByTerm: (term: string, year: number) =>
+    apiService.get(`/receipts/term/${term}/${year}`),
+  
+  getByClass: (className: string) =>
+    apiService.get(`/receipts/class/${className}`),
+  
+  getPrevious: (limit: number = 100) =>
+    apiService.get('/receipts/previous', { limit }),
+  
+  markAsPrinted: (receiptNumbers: number[]) =>
+    apiService.post('/receipts/mark-printed', { receiptNumbers }),
+  
+  getPrintConfig: () =>
+    apiService.get('/receipts/print-config'),
+  
+  getFilterOptions: () =>
+    apiService.get('/receipts/filter-options'),
+  
+  getLogo: () =>
+    apiService.getBlob('/receipts/logo')
 }
 
 export default apiService

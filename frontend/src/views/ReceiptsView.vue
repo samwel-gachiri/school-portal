@@ -1,166 +1,313 @@
 <template>
-  <div class="receipts-container">
-    <div class="receipts-header">
-      <h1>Receipts Management</h1>
-      <p>Print and manage school fee receipts</p>
-    </div>
+  <AuthGuard>
+    <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Print Payment Receipts</h1>
+        <p class="mt-2 text-gray-600">
+          Select payments and print receipts for school fees
+        </p>
+      </div>
 
-    <div class="receipts-menu">
-      <div class="menu-grid">
-        <div class="menu-item" @click="selectOption(1)">
-          <div class="menu-icon">👤</div>
-          <h3>Print Individual Student Payment</h3>
-          <p>Print payment receipt for a specific student</p>
+      <!-- Statistics Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <CreditCardIcon class="h-8 w-8 text-primary-600" />
+            </div>
+            <div class="ml-4">
+              <div class="text-2xl font-bold text-gray-900">
+                {{ payments.length }}
+              </div>
+              <div class="text-sm text-gray-500">Total Payments</div>
+            </div>
+          </div>
         </div>
 
-        <div class="menu-item" @click="selectOption(4)">
-          <div class="menu-icon">📄</div>
-          <h3>List Payments</h3>
-          <p>Select and print payment receipts</p>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <BanknotesIcon class="h-8 w-8 text-green-600" />
+            </div>
+            <div class="ml-4">
+              <div class="text-2xl font-bold text-gray-900">
+                KSh {{ totalAmount.toLocaleString() }}
+              </div>
+              <div class="text-sm text-gray-500">Total Amount</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <UserGroupIcon class="h-8 w-8 text-blue-600" />
+            </div>
+            <div class="ml-4">
+              <div class="text-2xl font-bold text-gray-900">
+                {{ uniqueStudents }}
+              </div>
+              <div class="text-sm text-gray-500">Unique Students</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <PrinterIcon class="h-8 w-8 text-orange-600" />
+            </div>
+            <div class="ml-4">
+              <div class="text-2xl font-bold text-gray-900">
+                {{ selectedPayments.length }}
+              </div>
+              <div class="text-sm text-gray-500">Selected for Print</div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Receipt Selection Modal -->
-    <div v-if="showModal" class="modal-overlay" @click="closeModal">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <h2>{{ getModalTitle() }}</h2>
-          <button class="close-btn" @click="closeModal">&times;</button>
+      <!-- Filters and Search -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">
+              Search
+            </label>
+            <input
+              id="search"
+              v-model="searchQuery"
+              type="text"
+              class="input-field"
+              placeholder="Student name, reference, etc."
+              @input="debouncedSearch"
+            />
+          </div>
+
+          <div>
+            <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">
+              Start Date
+            </label>
+            <input
+              id="startDate"
+              v-model="startDate"
+              type="date"
+              class="input-field"
+              @change="loadPayments"
+            />
+          </div>
+
+          <div>
+            <label for="endDate" class="block text-sm font-medium text-gray-700 mb-1">
+              End Date
+            </label>
+            <input
+              id="endDate"
+              v-model="endDate"
+              type="date"
+              class="input-field"
+              @change="loadPayments"
+            />
+          </div>
+
+          <div class="flex items-end">
+            <button
+              @click="clearFilters"
+              class="btn-secondary w-full"
+            >
+              <XMarkIcon class="h-4 w-4 mr-2" />
+              Clear Filters
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Selection Controls -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-4">
+            <div class="flex items-center">
+              <input
+                id="selectAll"
+                type="checkbox"
+                v-model="selectAll"
+                @change="toggleSelectAll"
+                class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+              />
+              <label for="selectAll" class="ml-2 text-sm text-gray-700">
+                Select All ({{ filteredPayments.length }} payments)
+              </label>
+            </div>
+          </div>
+          <div class="flex items-center space-x-4">
+            <span class="text-sm text-gray-500">
+              {{ selectedPayments.length }} selected
+            </span>
+            <button
+              @click="printSelected"
+              :disabled="selectedPayments.length === 0"
+              class="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <PrinterIcon class="h-4 w-4 mr-2" />
+              Print Selected ({{ selectedPayments.length }})
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment History Table -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-medium text-gray-900">Payment Records</h3>
+            <div class="flex items-center space-x-4">
+              <span class="text-sm text-gray-500">
+                Showing {{ filteredPayments.length }} of {{ payments.length }} payments
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div class="modal-body">
-          <!-- Individual Student -->
-          <div v-if="selectedOption === 1">
-            <div class="form-group">
-              <label for="studentSearch">Search Student (Name or Admission Number):</label>
-              <input
-                id="studentSearch"
-                v-model="studentSearch"
-                type="text"
-                placeholder="Enter student name or admission number"
-                class="form-input"
-                @input="searchStudents"
-              />
-            </div>
-            <div v-if="studentSearchResults.length > 0" class="search-results">
-              <h4>Select Student:</h4>
-              <div class="student-list">
-                <div
-                  v-for="student in studentSearchResults"
-                  :key="student.adm"
-                  class="student-item"
-                  @click="selectStudent(student)"
-                >
-                  <div class="student-info">
-                    <strong>{{ student.name1 }} {{ student.name2 }} {{ student.name3 }}</strong>
-                    <br>
-                    <small>ADM: {{ student.adm }} | Class: {{ student.class }}</small>
-                  </div>
-                  <div class="student-receipts">
-                    {{ getStudentReceiptCount(student.adm) }} receipt(s) available
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div v-if="selectedStudent" class="selected-student">
-              <h4>Selected Student:</h4>
-              <div class="student-card">
-                <div class="student-details">
-                  <strong>{{ selectedStudent.name1 }} {{ selectedStudent.name2 }} {{ selectedStudent.name3 }}</strong>
-                  <br>
-                  <span>ADM: {{ selectedStudent.adm }} | Class: {{ selectedStudent.class }}</span>
-                </div>
-                <button class="btn btn-sm btn-outline" @click="clearSelectedStudent">
-                  Change
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Term Receipts -->
-          <div v-if="selectedOption === 2">
-            <p>This option has been removed.</p>
-          </div>
-
-          <!-- Class Receipts -->
-          <div v-if="selectedOption === 3">
-            <p>This option has been removed.</p>
-          </div>
-
-          <!-- Previous Receipts -->
-          <div v-if="selectedOption === 4">
-            <div class="receipts-list">
-              <div v-if="previousReceipts.length === 0" class="no-receipts">
-                No payments found
-              </div>
-              <div v-else>
-                <div class="list-header">
-                  <h4>Payments ({{ previousReceipts.length }} total)</h4>
-                  <div class="select-all">
-                    <input
-                      type="checkbox"
-                      id="selectAllPrevious"
-                      v-model="selectAllPrevious"
-                      @change="toggleSelectAllPrevious"
-                    />
-                    <label for="selectAllPrevious">Select All</label>
-                  </div>
-                </div>
-                <div class="receipt-item" v-for="receipt in previousReceipts" :key="receipt.payment_id">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="table-header w-12">
                   <input
                     type="checkbox"
-                    :id="'receipt-' + receipt.payment_id"
-                    v-model="selectedReceipts"
-                    :value="receipt.payment_id"
+                    v-model="selectAll"
+                    @change="toggleSelectAll"
+                    class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                   />
-                  <label :for="'receipt-' + receipt.payment_id" class="receipt-label">
-                    <div class="receipt-info">
-                      <strong>Payment #{{ String(receipt.payment_id).padStart(4, '0') }}</strong>
-                      <span class="student-name">{{ receipt.name }}</span>
-                      <span class="adm-class">(ADM: {{ receipt.adm }} | Term: {{ receipt.term }} {{ receipt.year_paid }})</span>
+                </th>
+                <th class="table-header">Date</th>
+                <th class="table-header">Student</th>
+                <th class="table-header">Amount</th>
+                <th class="table-header">Reference</th>
+                <th class="table-header">Bank</th>
+                <th class="table-header">Term/Year</th>
+                <th class="table-header">Balance</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <tr
+                v-for="payment in filteredPayments"
+                :key="payment.payment_id"
+                class="hover:bg-gray-50"
+                :class="{ 'bg-blue-50': isSelected(payment.payment_id) }"
+              >
+                <td class="table-cell">
+                  <input
+                    type="checkbox"
+                    :value="payment.payment_id"
+                    v-model="selectedPayments"
+                    class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                  />
+                </td>
+                <td class="table-cell">
+                  <div class="text-sm text-gray-900">
+                    {{ formatDate(payment.dop) }}
+                  </div>
+                  <div class="text-xs text-gray-500">
+                    {{ formatTime(payment.dop) }}
+                  </div>
+                </td>
+
+                <td class="table-cell">
+                  <div class="flex items-center space-x-3">
+                    <div class="flex-shrink-0">
+                      <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                        <span class="text-xs font-medium text-gray-600">
+                          {{ getInitials(payment.name) }}
+                        </span>
+                      </div>
                     </div>
-                    <div class="receipt-details">
-                      <span class="item">{{ receipt.bank }} {{ receipt.ref }}</span>
-                      <span class="amount">KSh {{ formatAmount(receipt.amount) }}</span>
-                      <span class="date">{{ formatDate(receipt.dop) }}</span>
+                    <div>
+                      <div class="text-sm font-medium text-gray-900">
+                        {{ payment.name }}
+                      </div>
+                      <div class="text-xs text-gray-500">
+                        ADM: {{ payment.adm }}
+                      </div>
                     </div>
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
+                  </div>
+                </td>
+
+                <td class="table-cell">
+                  <div class="text-sm font-medium text-gray-900">
+                    KSh {{ payment.amount.toLocaleString() }}
+                  </div>
+                </td>
+
+                <td class="table-cell">
+                  <div class="text-sm text-gray-900 font-mono">
+                    {{ payment.ref }}
+                  </div>
+                </td>
+
+                <td class="table-cell">
+                  <div class="text-sm text-gray-900">
+                    {{ payment.bank || 'N/A' }}
+                  </div>
+                </td>
+
+                <td class="table-cell">
+                  <div class="text-sm text-gray-900">
+                    {{ payment.term }} {{ payment.year_paid }}
+                  </div>
+                </td>
+
+                <td class="table-cell">
+                  <div class="text-sm text-gray-900">
+                    KSh {{ (payment.balance || 0).toLocaleString() }}
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
-        <div class="modal-footer">
-          <button class="btn btn-secondary" @click="closeModal">Cancel</button>
-          <button
-            class="btn btn-primary"
-            @click="printReceipts"
-            :disabled="!canPrint"
-          >
-            Print Receipts
-          </button>
+        <!-- Empty State -->
+        <div v-if="filteredPayments.length === 0 && !isLoading" class="text-center py-12">
+          <ClockIcon class="h-12 w-12 text-gray-300 mx-auto mb-4" />
+          <p class="text-gray-500">No payment records found</p>
+          <p class="text-sm text-gray-400 mt-1">
+            {{ searchQuery || startDate || endDate ? 'Try adjusting your filters' : 'No payments have been processed yet' }}
+          </p>
+        </div>
+
+        <!-- Loading State -->
+        <div v-if="isLoading" class="text-center py-12">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p class="text-gray-600">Loading payment records...</p>
         </div>
       </div>
-    </div>
 
-    <!-- Receipt Preview Modal -->
-    <ReceiptPreviewModal
-      v-if="showPreview"
-      :receipts="receiptsToPrint"
-      :print-config="printConfig"
-      @close="showPreview = false"
-      @print="handlePrint"
-    />
-  </div>
+      <!-- Receipt Preview Modal -->
+      <ReceiptPreviewModal
+        v-if="showPreview"
+        :receipts="receiptsToPrint"
+        :print-config="printConfig"
+        @close="showPreview = false"
+        @print="handlePrint"
+      />
+    </div>
+  </AuthGuard>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
+import AuthGuard from '@/components/AuthGuard.vue'
 import ReceiptPreviewModal from '@/components/ReceiptPreviewModal.vue'
+import {
+  CreditCardIcon,
+  BanknotesIcon,
+  UserGroupIcon,
+  PrinterIcon,
+  XMarkIcon,
+  ClockIcon
+} from '@heroicons/vue/24/outline'
 
 interface Receipt {
   name: string
@@ -176,222 +323,139 @@ interface Receipt {
   section?: string
 }
 
-interface TermOption {
-  term: string
-  year: number
-}
-
-const router = useRouter()
-
 // State
-const showModal = ref(false)
-const showPreview = ref(false)
-const selectedOption = ref<number | null>(null)
-const studentSearch = ref('')
-const selectedStudent = ref<any>(null)
-const selectedTerm = ref<TermOption | null>(null)
-const selectedClass = ref('')
-const selectedReceipts = ref<number[]>([])
+const isLoading = ref(false)
+const payments = ref<Receipt[]>([])
+const searchQuery = ref('')
+const startDate = ref('')
+const endDate = ref('')
+const selectedPayments = ref<number[]>([])
 const selectAll = ref(false)
-const selectAllPrevious = ref(false)
-
-// Data
-const unprintedReceipts = ref<Receipt[]>([])
-const previousReceipts = ref<Receipt[]>([])
-const studentSearchResults = ref<any[]>([])
-const availableClasses = ref<string[]>([])
-const availableTerms = ref<TermOption[]>([])
+const showPreview = ref(false)
 const printConfig = ref<any>(null)
 const receiptsToPrint = ref<Receipt[]>([])
 
 // Computed
-const canPrint = computed(() => {
-  switch (selectedOption.value) {
-    case 1:
-      return selectedStudent.value !== null
-    case 4:
-      return selectedReceipts.value.length > 0
-    default:
-      return false
+const filteredPayments = computed(() => {
+  let filtered = payments.value
+
+  // Filter by search query
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(payment =>
+      payment.name.toLowerCase().includes(query) ||
+      payment.ref.toLowerCase().includes(query) ||
+      payment.adm.toString().includes(query)
+    )
   }
+
+  // Filter by date range
+  if (startDate.value) {
+    const start = new Date(startDate.value)
+    filtered = filtered.filter(payment => new Date(payment.dop) >= start)
+  }
+
+  if (endDate.value) {
+    const end = new Date(endDate.value)
+    end.setHours(23, 59, 59, 999) // End of day
+    filtered = filtered.filter(payment => new Date(payment.dop) <= end)
+  }
+
+  return filtered
 })
 
+const totalAmount = computed(() => {
+  return payments.value.reduce((sum, payment) => sum + payment.amount, 0)
+})
+
+const uniqueStudents = computed(() => {
+  const students = new Set(payments.value.map(p => p.adm))
+  return students.size
+})
+
+// Debounced search
+let searchTimeout: NodeJS.Timeout | null = null
+
+const debouncedSearch = () => {
+  if (searchTimeout) {
+    clearTimeout(searchTimeout)
+  }
+
+  searchTimeout = setTimeout(() => {
+    // Search is reactive through computed property
+  }, 300)
+}
+
 // Methods
-const selectOption = (option: number) => {
-  selectedOption.value = option
-  selectedReceipts.value = []
-  selectAll.value = false
-  showModal.value = true
+const loadPayments = async () => {
+  isLoading.value = true
 
-  // Load data based on option
-  switch (option) {
-    case 4:
-      loadPreviousReceipts()
-      break
-  }
-}
-
-const closeModal = () => {
-  showModal.value = false
-  selectedOption.value = null
-  studentSearch.value = ''
-  selectedStudent.value = null
-  selectedReceipts.value = []
-  selectAll.value = false
-  selectAllPrevious.value = false
-  studentSearchResults.value = []
-}
-
-const getModalTitle = () => {
-  switch (selectedOption.value) {
-    case 1:
-      return 'Print Individual Student Payment'
-    case 4:
-      return 'List Payments'
-    default:
-      return 'Print Payments'
-  }
-}
-
-const loadUnprintedReceipts = async () => {
   try {
-    const response = await api.get('/receipts/unprinted')
-    unprintedReceipts.value = response.data?.data || []
+    const response = await api.get('/receipts/previous?limit=1000') // Load more payments
+    payments.value = response.data || []
   } catch (error) {
-    console.error('Error loading unprinted receipts:', error)
-    unprintedReceipts.value = []
-  }
-}
-
-const loadPreviousReceipts = async () => {
-  try {
-    const response = await api.get('/receipts/previous?limit=50')
-    previousReceipts.value = response.data?.data || []
-  } catch (error) {
-    console.error('Error loading previous receipts:', error)
-    previousReceipts.value = []
-  }
-}
-
-const loadFilterOptions = async () => {
-  try {
-    const response = await api.get('/receipts/filters')
-    availableClasses.value = response.data.data.classes
-    availableTerms.value = response.data.data.terms
-  } catch (error) {
-    console.error('Error loading filter options:', error)
+    console.error('Load payments error:', error)
+    payments.value = []
+  } finally {
+    isLoading.value = false
   }
 }
 
 const loadPrintConfig = async () => {
   try {
     const response = await api.get('/receipts/config')
-    printConfig.value = response.data.data
+    printConfig.value = response.data
   } catch (error) {
     console.error('Error loading print config:', error)
   }
 }
 
-const toggleSelectAllPrevious = () => {
-  if (selectAllPrevious.value) {
-    selectedReceipts.value = previousReceipts.value.map(r => r.payment_id)
+const clearFilters = () => {
+  searchQuery.value = ''
+  startDate.value = ''
+  endDate.value = ''
+  selectedPayments.value = []
+  selectAll.value = false
+}
+
+const toggleSelectAll = () => {
+  if (selectAll.value) {
+    selectedPayments.value = filteredPayments.value.map(p => p.payment_id)
   } else {
-    selectedReceipts.value = []
+    selectedPayments.value = []
   }
 }
 
-const searchStudents = async () => {
-  if (studentSearch.value.trim().length < 2) {
-    studentSearchResults.value = []
-    return
-  }
+const isSelected = (paymentId: number) => {
+  return selectedPayments.value.includes(paymentId)
+}
+
+const printSelected = async () => {
+  if (selectedPayments.value.length === 0) return
 
   try {
-    // Search students by name or ADM
-    const response = await api.get('/students/search', {
-      params: { q: studentSearch.value.trim() }
-    })
-    studentSearchResults.value = response.data.data || []
-  } catch (error) {
-    console.error('Error searching students:', error)
-    studentSearchResults.value = []
-  }
-}
+    // Filter selected payments
+    const selectedReceipts = payments.value.filter(p =>
+      selectedPayments.value.includes(p.payment_id)
+    )
 
-const selectStudent = (student: any) => {
-  selectedStudent.value = student
-  studentSearchResults.value = []
-}
-
-const clearSelectedStudent = () => {
-  selectedStudent.value = null
-  studentSearch.value = ''
-}
-
-const getStudentReceiptCount = (adm: number): number => {
-  // This could be optimized by caching or making a separate API call
-  // For now, we'll return a placeholder
-  return 0 // TODO: Implement actual count
-}
-
-const formatAmount = (amount: number): string => {
-  return amount.toLocaleString('en-KE', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })
-}
-
-const formatDate = (dateString: string): string => {
-  if (!dateString) return ''
-  try {
-    return new Date(dateString).toLocaleDateString('en-GB')
-  } catch {
-    return dateString
-  }
-}
-
-const printReceipts = async () => {
-  try {
-    let receipts: Receipt[] = []
-
-    switch (selectedOption.value) {
-      case 1:
-        // Get individual student receipts
-        if (selectedStudent.value) {
-          const studentResponse = await api.get(`/receipts/student/${selectedStudent.value.adm}`)
-          receipts = studentResponse.data?.data || []
-        }
-        break
-      case 4:
-        // Filter selected receipts
-        if (Array.isArray(previousReceipts.value)) {
-          receipts = previousReceipts.value.filter(r => selectedReceipts.value.includes(r.payment_id))
-        }
-        break
-    }
-
-    if (!Array.isArray(receipts) || receipts.length === 0) {
-      alert('No payments found to print')
-      return
-    }
-
-    receiptsToPrint.value = receipts
-    showModal.value = false
+    receiptsToPrint.value = selectedReceipts
     showPreview.value = true
   } catch (error) {
     console.error('Error preparing payments for printing:', error)
-    alert('Error preparing payments for printing')
   }
 }
 
 const handlePrint = async (receiptNumbers: number[]) => {
   try {
-    // Mark receipts as printed
+    // Mark receipts as printed (if needed)
     if (receiptNumbers.length > 0) {
       await api.post('/receipts/mark-printed', { receiptNumbers })
     }
 
     showPreview.value = false
+    selectedPayments.value = []
+    selectAll.value = false
     alert('Payments printed successfully!')
   } catch (error) {
     console.error('Error marking receipts as printed:', error)
@@ -399,348 +463,44 @@ const handlePrint = async (receiptNumbers: number[]) => {
   }
 }
 
-// Watchers
-// Removed watcher for selectAll since option 5 was removed
+// Utility functions
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString()
+}
+
+const formatTime = (dateString: string) => {
+  return new Date(dateString).toLocaleTimeString()
+}
+
+const getInitials = (name: string) => {
+  return name?.charAt(0) || ''
+}
+
+// Watch selectAll to sync with selectedPayments
+import { watch } from 'vue'
+
+watch(selectAll, (newVal) => {
+  if (newVal) {
+    selectedPayments.value = filteredPayments.value.map(p => p.payment_id)
+  } else {
+    selectedPayments.value = []
+  }
+})
+
+watch(() => filteredPayments.value.length, () => {
+  // Update selectAll when filtered results change
+  if (selectedPayments.value.length === filteredPayments.value.length && filteredPayments.value.length > 0) {
+    selectAll.value = true
+  } else {
+    selectAll.value = false
+  }
+})
 
 // Lifecycle
 onMounted(async () => {
   await Promise.all([
-    loadFilterOptions(),
+    loadPayments(),
     loadPrintConfig()
   ])
 })
 </script>
-
-<style scoped>
-.receipts-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.receipts-header {
-  text-align: center;
-  margin-bottom: 40px;
-}
-
-.receipts-header h1 {
-  color: #2c3e50;
-  margin-bottom: 10px;
-}
-
-.receipts-header p {
-  color: #7f8c8d;
-  font-size: 1.1em;
-}
-
-.receipts-menu {
-  margin-top: 30px;
-}
-
-.menu-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-}
-
-.menu-item {
-  background: white;
-  border: 2px solid #e1e8ed;
-  border-radius: 8px;
-  padding: 25px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.menu-item:hover {
-  border-color: #3498db;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-  transform: translateY(-2px);
-}
-
-.menu-icon {
-  font-size: 3em;
-  margin-bottom: 15px;
-}
-
-.menu-item h3 {
-  color: #2c3e50;
-  margin-bottom: 10px;
-  font-size: 1.2em;
-}
-
-.menu-item p {
-  color: #7f8c8d;
-  font-size: 0.9em;
-}
-
-/* Modal Styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 600px;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-}
-
-.modal-header {
-  padding: 20px;
-  border-bottom: 1px solid #e1e8ed;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-header h2 {
-  margin: 0;
-  color: #2c3e50;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #7f8c8d;
-}
-
-.modal-body {
-  padding: 20px;
-}
-
-.modal-footer {
-  padding: 20px;
-  border-top: 1px solid #e1e8ed;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-/* Form Styles */
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: 500;
-  color: #2c3e50;
-}
-
-.form-input {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 16px;
-}
-
-/* Receipts List */
-.receipts-list {
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.receipt-item {
-  display: flex;
-  align-items: center;
-  padding: 10px;
-  border: 1px solid #e1e8ed;
-  border-radius: 4px;
-  margin-bottom: 8px;
-  background: #f8f9fa;
-}
-
-.receipt-item input[type="checkbox"] {
-  margin-right: 10px;
-}
-
-.receipt-item label {
-  flex: 1;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.select-all {
-  margin-bottom: 15px;
-  padding: 10px;
-  background: #e8f4fd;
-  border-radius: 4px;
-}
-
-.no-receipts {
-  text-align: center;
-  color: #7f8c8d;
-  padding: 40px;
-  font-style: italic;
-}
-
-/* Search Results */
-.search-results {
-  margin-top: 15px;
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid #e1e8ed;
-  border-radius: 4px;
-}
-
-.search-results h4 {
-  margin: 0;
-  padding: 10px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e1e8ed;
-  font-size: 14px;
-}
-
-.student-list {
-  max-height: 180px;
-  overflow-y: auto;
-}
-
-.student-item {
-  padding: 10px;
-  border-bottom: 1px solid #f0f0f0;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.student-item:hover {
-  background: #f8f9fa;
-}
-
-.student-item:last-child {
-  border-bottom: none;
-}
-
-.student-info {
-  font-size: 14px;
-}
-
-.student-receipts {
-  font-size: 12px;
-  color: #7f8c8d;
-  margin-top: 2px;
-}
-
-/* Selected Student */
-.selected-student {
-  margin-top: 15px;
-  padding: 15px;
-  background: #e8f4fd;
-  border-radius: 4px;
-  border: 1px solid #3498db;
-}
-
-.selected-student h4 {
-  margin: 0 0 10px 0;
-  font-size: 14px;
-  color: #2c3e50;
-}
-
-.student-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.student-details {
-  font-size: 14px;
-}
-
-.btn-sm {
-  padding: 6px 12px;
-  font-size: 12px;
-}
-
-.btn-outline {
-  background: transparent;
-  border: 1px solid #3498db;
-  color: #3498db;
-}
-
-.btn-outline:hover {
-  background: #3498db;
-  color: white;
-}
-
-/* List Header */
-.list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #e1e8ed;
-}
-
-.list-header h4 {
-  margin: 0;
-  color: #2c3e50;
-}
-
-/* Enhanced Receipt Items */
-.receipt-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  cursor: pointer;
-}
-
-.receipt-info {
-  flex: 1;
-}
-
-.receipt-info .student-name {
-  display: block;
-  color: #2c3e50;
-  margin: 2px 0;
-}
-
-.receipt-info .adm-class {
-  display: block;
-  font-size: 12px;
-  color: #7f8c8d;
-}
-
-.receipt-details {
-  text-align: right;
-  font-size: 12px;
-}
-
-.receipt-details .item {
-  display: block;
-  color: #34495e;
-  margin-bottom: 2px;
-}
-
-.receipt-details .amount {
-  display: block;
-  font-weight: bold;
-  color: #27ae60;
-  margin-bottom: 2px;
-}
-
-.receipt-details .date {
-  display: block;
-  color: #7f8c8d;
-}
-</style>

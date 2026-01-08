@@ -219,9 +219,27 @@ class ReceiptController {
       const logo = await receiptService.getSchoolLogo();
 
       if (logo) {
-        res.setHeader('Content-Type', 'image/png'); // or appropriate image type
+        // Detect image type from buffer
+        let contentType = 'image/png'; // default
+        
+        if (logo.length > 4) {
+          // Check magic bytes
+          if (logo[0] === 0xFF && logo[1] === 0xD8 && logo[2] === 0xFF) {
+            contentType = 'image/jpeg';
+          } else if (logo[0] === 0x89 && logo[1] === 0x50 && logo[2] === 0x4E && logo[3] === 0x47) {
+            contentType = 'image/png';
+          } else if (logo[0] === 0x47 && logo[1] === 0x49 && logo[2] === 0x46) {
+            contentType = 'image/gif';
+          } else if (logo[0] === 0x42 && logo[1] === 0x4D) {
+            contentType = 'image/bmp';
+          }
+        }
+        
+        console.log(`Serving logo with content-type: ${contentType}, size: ${logo.length} bytes`);
+        res.setHeader('Content-Type', contentType);
         res.send(logo);
       } else {
+        console.log('No logo found in database');
         res.status(404).json({
           success: false,
           message: 'School logo not found'

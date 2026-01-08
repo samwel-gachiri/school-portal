@@ -92,9 +92,6 @@ export class StudentService {
       // Use string interpolation for LIMIT to avoid parameter issues
       sql += ` ORDER BY s.name1, s.name2 LIMIT ${validLimit}`;
 
-      console.log('Student search SQL:', sql);
-      console.log('Student search params:', params);
-
       const students = await this.db.query<any>(sql, params);
 
       const mappedStudents: StudentMatch[] = students.map(student => ({

@@ -314,9 +314,6 @@ export class PaymentService {
 
       sql += ` ORDER BY p.dop DESC, p.payment_id DESC LIMIT ${validLimit} OFFSET ${validOffset}`;
 
-      console.log('Payment history SQL:', sql);
-      console.log('Payment history params:', params);
-
       return await this.db.query(sql, params);
 
     } catch (error) {

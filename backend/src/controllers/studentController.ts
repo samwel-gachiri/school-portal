@@ -113,7 +113,6 @@ export class StudentController {
           });
 
         } catch (matchError) {
-          console.error(`Error matching payment ${payment.id}:`, matchError);
           matchResults.push({
             paymentId: payment.id,
             studentName: payment.studentName,

@@ -12,8 +12,6 @@ export class AuthController {
 
   public login = async (req: Request, res: Response): Promise<void> => {
     try {
-      console.log('Login request received:', { body: req.body, headers: req.headers['content-type'] });
-      
       // Validate request body
       const schema = Joi.object({
         username: Joi.string().required().min(3).max(30),
@@ -22,7 +20,6 @@ export class AuthController {
 
       const { error, value } = schema.validate(req.body);
       if (error) {
-        console.log('Validation error:', error.details[0].message);
         res.status(400).json({
           success: false,
           error: {
@@ -35,13 +32,10 @@ export class AuthController {
       }
 
       const { username, password } = value;
-      console.log('Validated credentials:', { username, password: password ? '[HIDDEN]' : 'NOT SET' });
       
       const result = await this.authService.login(username, password);
-      console.log('AuthService result:', { success: result.success, message: result.message });
 
       if (result.success) {
-        console.log('Login successful for user:', username);
         res.status(200).json({
           success: true,
           data: {
@@ -51,7 +45,6 @@ export class AuthController {
           timestamp: new Date().toISOString()
         });
       } else {
-        console.log('Login failed for user:', username, 'reason:', result.message);
         res.status(401).json({
           success: false,
           error: {

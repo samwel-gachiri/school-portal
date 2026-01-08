@@ -48,6 +48,7 @@ class Server {
           config.server.nodeEnv === "production"
             ? [
                 "https://school-portal-self.vercel.app", // Replace with your Vercel domain
+                "https://school-portal-aghs.vercel.app"
               ]
             : ["http://localhost:5173", "http://127.0.0.1:5173"],
         credentials: true,

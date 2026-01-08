@@ -19,23 +19,13 @@ export class AuthService {
     message?: string;
   }> {
     try {
-      console.log('AuthService: Attempting login for username:', username);
-      
       // Find user by username
       const users = await this.db.query<User>(
         'SELECT user_id, username, password FROM user WHERE username = ?',
         [username]
       );
-
-      console.log('AuthService: Found users:', users.length);
       
       if (users.length === 0) {
-        console.log('AuthService: No user found with username:', username);
-        
-        // Let's check what users exist in the database
-        const allUsers = await this.db.query<User>('SELECT user_id, username FROM user');
-        console.log('AuthService: All users in database:', allUsers);
-        
         return {
           success: false,
           message: 'Invalid username or password'
@@ -43,15 +33,11 @@ export class AuthService {
       }
 
       const user = users[0];
-      console.log('AuthService: Found user:', { user_id: user.user_id, username: user.username });
 
       // Verify password
-      console.log('AuthService: Comparing password...');
       const isPasswordValid = await bcrypt.compare(password, user.password);
-      console.log('AuthService: Password valid:', isPasswordValid);
       
       if (!isPasswordValid) {
-        console.log('AuthService: Password comparison failed');
         return {
           success: false,
           message: 'Invalid username or password'
@@ -73,8 +59,6 @@ export class AuthService {
          VALUES (?, ?, ?)`,
         [sessionId, user.user_id, expiresAt]
       );
-
-      console.log('AuthService: Login successful for user:', username);
       
       return {
         success: true,

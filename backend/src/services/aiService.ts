@@ -83,7 +83,6 @@ Only return the JSON array, no other text.
         
         extractedData = JSON.parse(jsonMatch[0]);
       } catch (parseError) {
-        console.error('Failed to parse AI response:', content);
         throw new Error('Invalid JSON response from AI service');
       }
 
@@ -91,7 +90,7 @@ Only return the JSON array, no other text.
       const payments: ExtractedPayment[] = extractedData.map((item, index) => {
         // Validate required fields
         if (!item.amount || !item.transactionRef || !item.studentName || !item.className) {
-          console.warn(`Incomplete data for item ${index}:`, item);
+          // Skip incomplete data
         }
 
         return {

@@ -12,6 +12,8 @@ export interface ReceiptData {
   bank: string;
   ref: string;
   section?: string;
+  class?: string;
+  stream?: string;
 }
 
 export interface PrintConfig {
@@ -36,8 +38,22 @@ class ReceiptService {
    */
   async getUnprintedReceipts(): Promise<ReceiptData[]> {
     const query = `
-      SELECT pt.name, pt.adm, pt.payment_id, pt.term, pt.year_paid, pt.amount, pt.balance, pt.dop, pt.bank, pt.ref, s.section
+      SELECT 
+        CONCAT_WS(' ', st.name1, st.name2, st.name3) as name,
+        pt.adm, 
+        pt.payment_id, 
+        pt.term, 
+        pt.year_paid, 
+        pt.amount, 
+        pt.balance, 
+        pt.dop, 
+        pt.bank, 
+        pt.ref, 
+        s.section,
+        st.class,
+        st.stream
       FROM payment pt
+      JOIN student st ON pt.adm = st.adm
       JOIN school s ON 1=1
       ORDER BY pt.dop ASC
     `;
@@ -51,8 +67,22 @@ class ReceiptService {
    */
   async getReceiptsByStudent(adm: number): Promise<ReceiptData[]> {
     const query = `
-      SELECT pt.name, pt.adm, pt.payment_id, pt.term, pt.year_paid, pt.amount, pt.balance, pt.dop, pt.bank, pt.ref, s.section
+      SELECT 
+        CONCAT_WS(' ', st.name1, st.name2, st.name3) as name,
+        pt.adm, 
+        pt.payment_id, 
+        pt.term, 
+        pt.year_paid, 
+        pt.amount, 
+        pt.balance, 
+        pt.dop, 
+        pt.bank, 
+        pt.ref, 
+        s.section,
+        st.class,
+        st.stream
       FROM payment pt
+      JOIN student st ON pt.adm = st.adm
       JOIN school s ON 1=1
       WHERE pt.adm = ?
       ORDER BY pt.dop DESC
@@ -67,8 +97,22 @@ class ReceiptService {
    */
   async getReceiptsByTerm(term: string, year: number): Promise<ReceiptData[]> {
     const query = `
-      SELECT pt.name, pt.adm, pt.payment_id, pt.term, pt.year_paid, pt.amount, pt.balance, pt.dop, pt.bank, pt.ref, s.section
+      SELECT 
+        CONCAT_WS(' ', st.name1, st.name2, st.name3) as name,
+        pt.adm, 
+        pt.payment_id, 
+        pt.term, 
+        pt.year_paid, 
+        pt.amount, 
+        pt.balance, 
+        pt.dop, 
+        pt.bank, 
+        pt.ref, 
+        s.section,
+        st.class,
+        st.stream
       FROM payment pt
+      JOIN student st ON pt.adm = st.adm
       JOIN school s ON 1=1
       WHERE pt.term = ? AND pt.year_paid = ?
       ORDER BY pt.dop ASC
@@ -91,8 +135,22 @@ class ReceiptService {
    */
   async getPreviousReceipts(limit: number = 100): Promise<ReceiptData[]> {
     const query = `
-      SELECT pt.name, pt.adm, pt.payment_id, pt.term, pt.year_paid, pt.amount, pt.balance, pt.dop, pt.bank, pt.ref, s.section
+      SELECT 
+        CONCAT_WS(' ', st.name1, st.name2, st.name3) as name,
+        pt.adm, 
+        pt.payment_id, 
+        pt.term, 
+        pt.year_paid, 
+        pt.amount, 
+        pt.balance, 
+        pt.dop, 
+        pt.bank, 
+        pt.ref, 
+        s.section,
+        st.class,
+        st.stream
       FROM payment pt
+      JOIN student st ON pt.adm = st.adm
       JOIN school s ON 1=1
       ORDER BY pt.dop DESC
       LIMIT ${limit}
@@ -140,19 +198,17 @@ class ReceiptService {
 
   /**
    * Get school logo (if exists)
-   * Note: The original Java code looked for an 'images' table that doesn't exist
-   * We'll need to handle logo differently - perhaps from a file or base64 data
+   * Note: The logo is stored in the 'images' table with name='logo' and image as blob
    */
   async getSchoolLogo(): Promise<Buffer | null> {
     try {
-      // Try to get from images table if it exists
-      const imageResult = await this.db.query('SELECT image_data FROM images LIMIT 1');
+      // Get logo from images table where name='logo'
+      const imageResult = await this.db.query('SELECT image FROM images WHERE name = ? LIMIT 1', ['logo']);
       if (imageResult && imageResult.length > 0) {
-        return (imageResult[0] as any).image_data;
+        return (imageResult[0] as any).image;
       }
     } catch (error) {
-      // Images table doesn't exist or has different structure
-      console.log('Images table not available for logo');
+      console.log('Images table not available or logo not found:', error);
     }
 
     return null;

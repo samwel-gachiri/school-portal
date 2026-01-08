@@ -218,8 +218,6 @@ export class PaymentController {
         queryParams.userId = undefined;
       }
 
-      console.log('Payment history query params:', queryParams);
-
       const { error, value } = schema.validate(queryParams);
       if (error) {
         res.status(400).json({

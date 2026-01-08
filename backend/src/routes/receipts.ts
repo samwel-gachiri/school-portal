@@ -5,7 +5,14 @@ import { AuthMiddleware } from '../middleware/auth';
 const router = Router();
 const authMiddleware = new AuthMiddleware();
 
-// Apply authentication middleware to all receipt routes
+/**
+ * @route GET /api/receipts/logo
+ * @desc Get school logo (no auth required for receipt printing)
+ * @access Public
+ */
+router.get('api/receipts/logo', receiptController.getSchoolLogo);
+
+// Apply authentication middleware to all other receipt routes
 router.use(authMiddleware.authenticate);
 
 /**
