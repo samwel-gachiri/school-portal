@@ -26,6 +26,7 @@ export const manualFeeService = {
   // Bank reference validation rules
   BANK_RULES: {
     EQUITY: { length: 12, allowLetters: false },
+    EQUITY_DIRECT: { length: 10, allowLetters: true },
     KCB: { length: 12, allowLetters: false },
     CHEQUE: { length: 6, allowLetters: true },
     NCBA: { length: 13, allowLetters: false },
@@ -415,6 +416,7 @@ export const manualFeeService = {
   async getBankTypes() {
     return [
       { id: "EQUITY", name: "Equity Bank", format: "12 digits" },
+      { id: "EQUITY_DIRECT", name: "Equity Direct", format: "10 characters" },
       { id: "KCB", name: "KCB Bank", format: "12 digits" },
       { id: "CHEQUE", name: "Cheque", format: "6 characters" },
       { id: "NCBA", name: "NCBA Bank", format: "13 digits" },
