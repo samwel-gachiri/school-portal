@@ -24,7 +24,7 @@
           </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <!-- <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div class="flex items-center">
             <div class="flex-shrink-0">
               <BanknotesIcon class="h-8 w-8 text-green-600" />
@@ -36,7 +36,7 @@
               <div class="text-sm text-gray-500">Total Amount</div>
             </div>
           </div>
-        </div>
+        </div> -->
 
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div class="flex items-center">
