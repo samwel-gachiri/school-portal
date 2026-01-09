@@ -8,5 +8,6 @@
     <include file="migrations/000-create-user-table.xml"/>
     <include file="migrations/001-create-user-sessions-table.xml"/>
     <include file="migrations/002-create-processing-log-table.xml"/>
+    <include file="migrations/003-create-equity-transactions-table.xml"/>
 
 </databaseChangeLog>

@@ -143,6 +143,35 @@ classpath=lib/mysql-connector-java-8.0.33.jar
         )
       `);
 
+      // Create equity_transactions table (Equity Bank Integration)
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS equity_transactions (
+          transaction_id INT AUTO_INCREMENT PRIMARY KEY,
+          transaction_ref VARCHAR(50) NOT NULL UNIQUE,
+          transaction_date TIMESTAMP NOT NULL,
+          amount DECIMAL(10,2) NOT NULL,
+          currency VARCHAR(3) DEFAULT 'KES' NOT NULL,
+          depositor_name VARCHAR(255),
+          depositor_mobile VARCHAR(20),
+          payment_description VARCHAR(255),
+          narration TEXT,
+          status ENUM('pending', 'matched', 'posted', 'rejected') DEFAULT 'pending' NOT NULL,
+          matched_student_adm INT,
+          matched_by_user_id INT,
+          matched_at TIMESTAMP NULL,
+          posted_payment_id INT,
+          rejection_reason TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
+          INDEX idx_transaction_ref (transaction_ref),
+          INDEX idx_depositor_mobile (depositor_mobile),
+          INDEX idx_status (status),
+          INDEX idx_transaction_date (transaction_date),
+          INDEX idx_matched_student (matched_student_adm),
+          FOREIGN KEY (matched_by_user_id) REFERENCES user(user_id) ON DELETE SET NULL
+        )
+      `);
+
       console.log('✅ Fallback database setup completed successfully');
       
       return {

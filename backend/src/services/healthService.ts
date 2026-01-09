@@ -48,7 +48,8 @@ export class HealthService {
       'charges',
       'class',
       'user_sessions',
-      'processing_log'
+      'processing_log',
+      'equity_transactions'
     ];
 
     try {

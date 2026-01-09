@@ -42,6 +42,12 @@ export const config = {
   session: {
     timeout: parseInt(process.env.SESSION_TIMEOUT || '3600000', 10), // 1 hour
   },
+  jenga: {
+    baseUrl: process.env.JENGA_BASE_URL || 'https://uat.jengahq.io',
+    apiKey: process.env.JENGA_API_KEY || '',
+    merchantCode: process.env.JENGA_MERCHANT_CODE || '',
+    accountNumber: process.env.JENGA_ACCOUNT_NUMBER || '',
+  },
 };
 
 // Validate required environment variables
