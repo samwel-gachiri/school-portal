@@ -7,21 +7,28 @@ export const equityController = {
   /**
    * Webhook endpoint for Equity transaction notifications
    */
-  async webhookHandler(req: Request, res: Response) {
+  async webhookHandler(req: Request, res: Response): Promise<void> {
     try {
+      console.log('=== EQUITY WEBHOOK RECEIVED ===');
+      console.log('Headers:', JSON.stringify(req.headers, null, 2));
+      console.log('Body:', JSON.stringify(req.body, null, 2));
+      
       const signature = req.headers['x-jenga-signature'] as string;
       const payload = JSON.stringify(req.body);
 
       // Verify webhook signature for security
       if (!jengaApiService.verifyWebhookSignature(payload, signature)) {
         logger.warn('Invalid webhook signature');
-        return res.status(401).json({ error: 'Invalid signature' });
+        console.log('⚠️  Webhook signature verification failed');
+        res.status(401).json({ error: 'Invalid signature' });
+        return;
       }
 
+      console.log('✅ Webhook signature verified');
       const transaction = req.body;
 
       // Store transaction
-      const transactionId = await equityTransactionService.storeTransaction({
+      const transactionData = {
         transaction_ref: transaction.transactionReference || transaction.reference,
         transaction_date: transaction.transactionDate || transaction.date,
         amount: parseFloat(transaction.amount),
@@ -30,10 +37,21 @@ export const equityController = {
         depositor_mobile: transaction.depositorMobile || transaction.mobile,
         payment_description: transaction.paymentDescription || transaction.description,
         narration: transaction.narration,
-      });
+      };
+      
+      console.log('📝 Storing transaction:', transactionData);
+      const transactionId = await equityTransactionService.storeTransaction(transactionData);
+      console.log(`✅ Transaction stored with ID: ${transactionId}`);
 
       // Attempt auto-matching
+      console.log('🔍 Attempting auto-match...');
       const matchResult = await equityTransactionService.autoMatchTransaction(transactionId);
+      console.log('🎯 Match result:', {
+        matched: matchResult.matched,
+        confidence: matchResult.confidence,
+        method: matchResult.matchMethod,
+        student: matchResult.student,
+      });
 
       logger.info(`Webhook processed: ${transaction.transactionReference}`, {
         transactionId,
@@ -101,17 +119,18 @@ export const equityController = {
   /**
    * Manually match transaction to student
    */
-  async manualMatch(req: Request, res: Response) {
+  async manualMatch(req: Request, res: Response): Promise<void> {
     try {
       const { transactionId } = req.params;
       const { studentAdm } = req.body;
       const userId = (req as any).user?.userId;
 
       if (!studentAdm) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Student admission number is required',
         });
+        return;
       }
 
       await equityTransactionService.manualMatchTransaction(
@@ -130,13 +149,14 @@ export const equityController = {
         success: false,
         message: 'Failed to match transaction',
       });
+      return;
     }
   },
 
   /**
    * Post matched transaction as payment
    */
-  async postTransaction(req: Request, res: Response) {
+  async postTransaction(req: Request, res: Response): Promise<void> {
     try {
       const { transactionId } = req.params;
       const userId = (req as any).user?.userId;
@@ -163,17 +183,18 @@ export const equityController = {
   /**
    * Reject transaction
    */
-  async rejectTransaction(req: Request, res: Response) {
+  async rejectTransaction(req: Request, res: Response): Promise<void> {
     try {
       const { transactionId } = req.params;
       const { reason } = req.body;
       const userId = (req as any).user?.userId;
 
       if (!reason) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Rejection reason is required',
         });
+        return;
       }
 
       await equityTransactionService.rejectTransaction(
@@ -192,13 +213,14 @@ export const equityController = {
         success: false,
         message: 'Failed to reject transaction',
       });
+      return;
     }
   },
 
   /**
    * Sync recent transactions from Jenga API
    */
-  async syncTransactions(req: Request, res: Response) {
+  async syncTransactions(req: Request, res: Response): Promise<void> {
     try {
       // Get transactions from today
       const today = new Date().toISOString().split('T')[0];
@@ -249,13 +271,14 @@ export const equityController = {
         success: false,
         message: 'Failed to sync transactions',
       });
+      return;
     }
   },
 
   /**
    * Get transaction statistics
    */
-  async getStats(req: Request, res: Response) {
+  async getStats(req: Request, res: Response): Promise<void> {
     try {
       const stats = await equityTransactionService.getTransactionStats();
 
@@ -275,7 +298,7 @@ export const equityController = {
   /**
    * Get account balance from Jenga API
    */
-  async getBalance(req: Request, res: Response) {
+  async getBalance(req: Request, res: Response): Promise<void> {
     try {
       const balance = await jengaApiService.getAccountBalance();
 

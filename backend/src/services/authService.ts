@@ -34,6 +34,14 @@ export class AuthService {
 
       const user = users[0];
 
+      // Check if user has a password set
+      if (!user.password) {
+        return {
+          success: false,
+          message: 'Invalid username or password'
+        };
+      }
+
       // Verify password
       const isPasswordValid = await bcrypt.compare(password, user.password);
       

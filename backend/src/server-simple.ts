@@ -13,6 +13,9 @@ import studentRoutes from './routes/students';
 import paymentRoutes from './routes/payments';
 import manualFeesRoutes from './routes/manualFees';
 import receiptsRoutes from './routes/receipts';
+import equityRoutes from './routes/equity';
+import promotionRoutes from './routes/promotion';
+import chargesRoutes from './routes/charges';
 
 const app = express();
 const healthService = new HealthService();
@@ -61,6 +64,13 @@ app.use('/api/students', studentRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/manual-fees', manualFeesRoutes);
 app.use('/api/receipts', receiptsRoutes);
+app.use('/api/equity', equityRoutes);
+app.use('/api/promotion', promotionRoutes);
+app.use('/api/charges', chargesRoutes);
+
+console.log('✅ Equity routes registered at /api/equity');
+console.log('✅ Promotion routes registered at /api/promotion');
+console.log('✅ Charges routes registered at /api/charges');
 
 // Root endpoint
 app.get('/', (req, res) => {

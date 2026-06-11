@@ -113,3 +113,8 @@ export class AuthMiddleware {
     };
   };
 }
+
+// Export a singleton instance for use as middleware
+const authMiddleware = new AuthMiddleware();
+export const requireAuth = authMiddleware.authenticate;
+export const optionalAuth = authMiddleware.optionalAuth;

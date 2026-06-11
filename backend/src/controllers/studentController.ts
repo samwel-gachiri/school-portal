@@ -191,12 +191,14 @@ export class StudentController {
       }
 
       const feeStructure = await this.studentService.getStudentFeeStructure(admissionNumber);
+      const transactions = await this.studentService.getStudentTransactions(admissionNumber);
 
       res.status(200).json({
         success: true,
         data: {
           student,
-          feeStructure
+          feeStructure,
+          transactions
         },
         timestamp: new Date().toISOString()
       });
@@ -271,6 +273,65 @@ export class StudentController {
         error: {
           code: 'MANUAL_MATCH_FAILED',
           message: error instanceof Error ? error.message : 'Failed to create manual match'
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+  };
+
+  public createStudent = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const schema = Joi.object({
+        name1: Joi.string().required().max(30),
+        name2: Joi.string().required().max(30),
+        name3: Joi.string().optional().allow('').max(30),
+        fphone: Joi.string().optional().allow('').max(20),
+        dob: Joi.date().optional().allow(''),
+        classId: Joi.number().integer().positive().required(),
+        streamId: Joi.number().integer().positive().optional().allow(null),
+        applyAdmissionCharge: Joi.boolean().default(true),
+        admissionChargeAmount: Joi.number().min(0).default(500)
+      });
+
+      const { error, value } = schema.validate(req.body);
+      if (error) {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: error.details[0].message
+          },
+          timestamp: new Date().toISOString()
+        });
+        return;
+      }
+
+      const userId = req.user?.user_id;
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          error: { code: 'UNAUTHORIZED', message: 'User not authenticated' },
+          timestamp: new Date().toISOString()
+        });
+        return;
+      }
+
+      const result = await this.studentService.createStudent(value, userId);
+
+      res.status(201).json({
+        success: true,
+        data: result,
+        message: 'Student added successfully',
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('Create student error:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'CREATE_FAILED',
+          message: error instanceof Error ? error.message : 'Failed to create student'
         },
         timestamp: new Date().toISOString()
       });

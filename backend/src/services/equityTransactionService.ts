@@ -276,12 +276,14 @@ export class EquityTransactionService {
    * Get pending transactions
    */
   async getPendingTransactions(limit: number = 50) {
+    // Ensure limit is an integer for MySQL2 prepared statement
+    const safeLimit = Math.floor(Number(limit) || 50);
     return await this.db.query(
       `SELECT * FROM equity_transactions 
        WHERE status IN ('pending', 'matched')
        ORDER BY transaction_date DESC
-       LIMIT ?`,
-      [limit]
+       LIMIT ${safeLimit}`,
+      []
     );
   }
 

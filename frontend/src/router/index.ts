@@ -47,6 +47,31 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/charges',
+      name: 'charges',
+      component: () => import('@/views/ChargesView.vue'),
+      meta: { requiresAuth: true }
+    },
+    // Admin routes
+    {
+      path: '/admin/promotion',
+      name: 'admin-promotion',
+      component: () => import('@/views/PromotionView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/admin/equity',
+      name: 'admin-equity',
+      component: () => import('@/views/EquityTransactionsView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/admin/students',
+      name: 'students',
+      component: () => import('@/views/admin/StudentsView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('@/views/NotFoundView.vue')

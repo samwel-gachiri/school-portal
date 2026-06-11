@@ -12,6 +12,18 @@ export interface MatchResult {
   matchReasons: string[];
 }
 
+export interface CreateStudentData {
+  name1: string;
+  name2: string;
+  name3?: string;
+  fphone?: string;
+  dob?: string;
+  classId: number;
+  streamId?: number | null;
+  applyAdmissionCharge: boolean;
+  admissionChargeAmount?: number;
+}
+
 export class StudentService {
   private db: DatabaseConnection;
 
@@ -364,5 +376,135 @@ export class StudentService {
       console.error('Get student fee structure error:', error);
       throw new Error('Failed to retrieve student fee structure');
     }
+  }
+
+  public async getStudentTransactions(admissionNumber: number): Promise<any[]> {
+    try {
+      const charges = await this.db.query<any>(
+        `SELECT 
+          charge_id as id, 
+          'CHARGE' as type, 
+          name, 
+          amount, 
+          balance, 
+          term, 
+          year_ass as year, 
+          date_ass as date,
+          NULL as bank,
+          NULL as ref
+        FROM charges
+        WHERE adm = ?`,
+        [admissionNumber]
+      );
+
+      const payments = await this.db.query<any>(
+        `SELECT 
+          payment_id as id, 
+          'PAYMENT' as type, 
+          name, 
+          amount, 
+          balance, 
+          term, 
+          year_paid as year, 
+          dop as date, 
+          bank, 
+          ref
+        FROM payment
+        WHERE adm = ?`,
+        [admissionNumber]
+      );
+
+      const transactions = [...charges, ...payments].sort((a, b) => {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        // Sort descending (newest first)
+        if (dateB !== dateA) {
+          return dateB - dateA;
+        }
+        // If same date, id as secondary sort (assuming newer id means newer record)
+        return b.id - a.id;
+      });
+
+      return transactions;
+
+    } catch (error) {
+      console.error('Get student transactions error:', error);
+      throw new Error('Failed to retrieve student transactions');
+    }
+  }
+
+  public async createStudent(data: CreateStudentData, userId: number): Promise<any> {
+    return this.db.transaction(async (conn) => {
+      // Get class fees
+      const [classResult] = await conn.query(`SELECT fees FROM class WHERE class_id = ?`, [data.classId]);
+      const classRows = classResult as any[];
+      if (!classRows || classRows.length === 0) {
+        throw new Error('Class not found');
+      }
+      const fees = classRows[0].fees || 0;
+
+      // Insert student with balance 0 initially
+      const [insertResult] = await conn.query(`
+        INSERT INTO student (name1, name2, name3, fphone, dob, fees, balance, class, stream)
+        VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
+      `, [
+        data.name1.toUpperCase(),
+        data.name2.toUpperCase(),
+        data.name3 ? data.name3.toUpperCase() : null,
+        data.fphone || null,
+        data.dob || null,
+        fees,
+        data.classId,
+        data.streamId || null
+      ]);
+
+      const adm = (insertResult as any).insertId;
+
+      let finalBalance = 0;
+
+      // Apply admission charge if requested
+      if (data.applyAdmissionCharge && data.admissionChargeAmount && data.admissionChargeAmount > 0) {
+        const amount = data.admissionChargeAmount;
+        finalBalance = amount;
+
+        // Get current term/year
+        const [termResult] = await conn.query(`SELECT term, year FROM school ORDER BY year DESC, term DESC LIMIT 1`);
+        const termRows = termResult as any[];
+        const term = termRows.length > 0 ? termRows[0].term : 'ONE';
+        const yearAss = termRows.length > 0 ? termRows[0].year : new Date().getFullYear();
+        const dateAss = new Date().toISOString().split('T')[0];
+
+        // Insert charge
+        const [chargeResult] = await conn.query(`
+          INSERT INTO charges (adm, name, amount, balance, term, year_ass, date_ass)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, [adm, 'ADMISSION_FEE', amount, finalBalance, term, yearAss, dateAss]);
+
+        const chargeId = (chargeResult as any).insertId;
+
+        // Update student balance
+        await conn.query(`UPDATE student SET balance = ? WHERE adm = ?`, [finalBalance, adm]);
+
+        // Log transaction
+        await conn.query(`
+          INSERT INTO processing_log (user_id, action_type, details)
+          VALUES (?, ?, ?)
+        `, [userId, "insert", JSON.stringify({
+          type: "CHARGE",
+          chargeId,
+          adm,
+          name: 'ADMISSION_FEE',
+          amount,
+          newBalance: finalBalance
+        })]);
+      }
+
+      return {
+        adm,
+        name: `${data.name1} ${data.name2} ${data.name3 || ''}`.trim(),
+        balance: finalBalance,
+        classId: data.classId
+      };
+    });
   }
 }

@@ -19,6 +19,8 @@ import paymentRoutes from "./routes/payments";
 import manualFeesRoutes from "./routes/manualFees";
 import receiptsRoutes from "./routes/receipts";
 import equityRoutes from "./routes/equity";
+import promotionRoutes from "./routes/promotion";
+import chargesRoutes from "./routes/charges";
 
 class Server {
   private app: express.Application;
@@ -96,10 +98,14 @@ class Server {
     this.app.use("/api/manual-fees", manualFeesRoutes);
     this.app.use("/api/receipts", receiptsRoutes);
     this.app.use("/api/equity", equityRoutes);
+    this.app.use("/api/promotion", promotionRoutes);
+    this.app.use("/api/charges", chargesRoutes);
 
     console.log("✅ Manual fees routes registered at /api/manual-fees");
     console.log("✅ Receipts routes registered at /api/receipts");
     console.log("✅ Equity integration routes registered at /api/equity");
+    console.log("✅ Promotion routes registered at /api/promotion");
+    console.log("✅ Charges routes registered at /api/charges");
 
     // Root endpoint
     this.app.get("/", (req, res) => {
