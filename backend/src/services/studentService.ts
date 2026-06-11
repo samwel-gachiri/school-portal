@@ -24,6 +24,14 @@ export interface CreateStudentData {
   admissionChargeAmount?: number;
 }
 
+export interface UpdateStudentData {
+  name1?: string;
+  name2?: string;
+  name3?: string;
+  classId?: number;
+  streamId?: number | null;
+}
+
 export class StudentService {
   private db: DatabaseConnection;
 
@@ -505,6 +513,54 @@ export class StudentService {
         balance: finalBalance,
         classId: data.classId
       };
+    });
+  }
+
+  public async updateStudent(adm: number, data: UpdateStudentData, userId: number): Promise<boolean> {
+    const fieldsToUpdate: string[] = [];
+    const values: any[] = [];
+
+    if (data.name1 !== undefined) {
+      fieldsToUpdate.push('name1 = ?');
+      values.push(data.name1.toUpperCase());
+    }
+    if (data.name2 !== undefined) {
+      fieldsToUpdate.push('name2 = ?');
+      values.push(data.name2.toUpperCase());
+    }
+    if (data.name3 !== undefined) {
+      fieldsToUpdate.push('name3 = ?');
+      values.push(data.name3 ? data.name3.toUpperCase() : null);
+    }
+    if (data.classId !== undefined) {
+      fieldsToUpdate.push('class = ?');
+      values.push(data.classId);
+    }
+    if (data.streamId !== undefined) {
+      fieldsToUpdate.push('stream = ?');
+      values.push(data.streamId);
+    }
+
+    if (fieldsToUpdate.length === 0) return true;
+
+    values.push(adm);
+
+    return this.db.transaction(async (conn) => {
+      await conn.query(
+        `UPDATE student SET ${fieldsToUpdate.join(', ')} WHERE adm = ?`,
+        values
+      );
+
+      await conn.query(`
+        INSERT INTO processing_log (user_id, action_type, details)
+        VALUES (?, ?, ?)
+      `, [userId, "update", JSON.stringify({
+        type: "STUDENT_UPDATE",
+        adm,
+        updatedFields: Object.keys(data)
+      })]);
+
+      return true;
     });
   }
 }

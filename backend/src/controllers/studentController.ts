@@ -337,4 +337,61 @@ export class StudentController {
       });
     }
   };
+
+  public updateStudent = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const admissionNumber = parseInt(req.params.admissionNumber, 10);
+      if (isNaN(admissionNumber)) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_PARAMETERS', message: 'Invalid admission number' }
+        });
+        return;
+      }
+
+      const schema = Joi.object({
+        name1: Joi.string().max(50).optional(),
+        name2: Joi.string().max(50).optional(),
+        name3: Joi.string().max(50).allow(null, '').optional(),
+        classId: Joi.number().integer().optional(),
+        streamId: Joi.number().integer().allow(null).optional()
+      });
+
+      const { error, value } = schema.validate(req.body);
+      if (error) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'VALIDATION_ERROR', message: error.details[0].message }
+        });
+        return;
+      }
+
+      if (!req.user || !req.user.user_id) {
+        res.status(401).json({
+          success: false,
+          error: { code: 'UNAUTHORIZED', message: 'User not authenticated' }
+        });
+        return;
+      }
+
+      await this.studentService.updateStudent(admissionNumber, value, req.user.user_id);
+
+      res.status(200).json({
+        success: true,
+        message: 'Student updated successfully',
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('Update student error:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'UPDATE_FAILED',
+          message: error instanceof Error ? error.message : 'Failed to update student'
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+  };
 }

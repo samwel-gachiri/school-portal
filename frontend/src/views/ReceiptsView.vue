@@ -434,15 +434,21 @@ const printSelected = async () => {
   if (selectedPayments.value.length === 0) return
 
   try {
-    // Filter selected payments
-    const selectedReceipts = payments.value.filter(p =>
-      selectedPayments.value.includes(p.payment_id)
-    )
+    // Skip preview, directly send to backend and launch printer
+    await api.post('/receipts/mark-printed', { receiptNumbers: selectedPayments.value })
+      
+    // Trigger the local Java Desktop Application via Custom URI Protocol
+    const iframe = document.createElement('iframe')
+    iframe.style.display = 'none'
+    iframe.src = 'schoolprint://start'
+    document.body.appendChild(iframe)
+    setTimeout(() => document.body.removeChild(iframe), 1000)
 
-    receiptsToPrint.value = selectedReceipts
-    showPreview.value = true
+    selectedPayments.value = []
+    selectAll.value = false
   } catch (error) {
     console.error('Error preparing payments for printing:', error)
+    alert('Error triggering printer')
   }
 }
 
@@ -451,12 +457,19 @@ const handlePrint = async (receiptNumbers: number[]) => {
     // Mark receipts as printed (if needed)
     if (receiptNumbers.length > 0) {
       await api.post('/receipts/mark-printed', { receiptNumbers })
+      
+      // Trigger the local Java Desktop Application via Custom URI Protocol
+      const iframe = document.createElement('iframe')
+      iframe.style.display = 'none'
+      iframe.src = 'schoolprint://start'
+      document.body.appendChild(iframe)
+      setTimeout(() => document.body.removeChild(iframe), 1000)
     }
 
     showPreview.value = false
     selectedPayments.value = []
     selectAll.value = false
-    alert('Payments printed successfully!')
+
   } catch (error) {
     console.error('Error marking receipts as printed:', error)
     alert('Error updating receipt status')

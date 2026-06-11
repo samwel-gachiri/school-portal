@@ -37,6 +37,7 @@
             <input
               type="text"
               v-model="searchQuery"
+              @input="handleInputSearch"
               @keyup.enter="searchStudents"
               class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md py-2 border"
               placeholder="Search by name, admission number, or class..."
@@ -187,6 +188,53 @@
       </div>
     </div>
 
+    <!-- Edit Student Modal -->
+    <div v-if="showEditModal" class="fixed inset-0 overflow-y-auto z-50">
+      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true" @click="showEditModal = false">
+          <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+          <div>
+            <div class="mt-3 text-center sm:mt-5">
+              <h3 class="text-lg leading-6 font-medium text-gray-900">Edit Student</h3>
+            </div>
+            <form @submit.prevent="submitEditStudent" class="mt-5 space-y-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">First Name *</label>
+                  <input type="text" v-model="editStudentForm.name1" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 sm:text-sm">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">Middle Name *</label>
+                  <input type="text" v-model="editStudentForm.name2" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 sm:text-sm">
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Last Name</label>
+                <input type="text" v-model="editStudentForm.name3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 sm:text-sm">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Class *</label>
+                <select v-model="editStudentForm.classId" required class="mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 sm:text-sm">
+                  <option v-for="c in classes" :key="c.class_id" :value="c.class_id">{{ c.name }}</option>
+                </select>
+              </div>
+              <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+                <button type="submit" :disabled="submittingEdit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-2 sm:text-sm">
+                  {{ submittingEdit ? 'Saving...' : 'Save Changes' }}
+                </button>
+                <button type="button" @click="showEditModal = false" :disabled="submittingEdit" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:col-start-1 sm:text-sm">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Student Details Drawer -->
     <div v-if="showDetailsDrawer" class="fixed inset-0 overflow-hidden z-50" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
       <div class="absolute inset-0 overflow-hidden">
@@ -221,7 +269,12 @@
               <div v-else-if="selectedStudent" class="relative flex-1">
                 <!-- Header Info -->
                 <div class="px-4 py-5 sm:px-6 bg-gray-50 border-b border-gray-200">
-                  <h3 class="text-xl leading-6 font-bold text-gray-900">{{ selectedStudent.student.name1 }} {{ selectedStudent.student.name2 }} {{ selectedStudent.student.name3 || '' }}</h3>
+                  <div class="flex justify-between items-start">
+                    <h3 class="text-xl leading-6 font-bold text-gray-900">{{ selectedStudent.student.name1 }} {{ selectedStudent.student.name2 }} {{ selectedStudent.student.name3 || '' }}</h3>
+                    <button @click="openEditModal" class="text-sm bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 px-3 py-1 rounded-md font-medium shadow-sm transition-colors">
+                      Edit
+                    </button>
+                  </div>
                   <div class="mt-2 max-w-2xl text-sm text-gray-500 flex justify-between">
                     <span><strong class="text-gray-700">Adm:</strong> {{ selectedStudent.student.adm }}</span>
                     <span><strong class="text-gray-700">Class:</strong> {{ selectedStudent.student.class }}</span>
@@ -304,6 +357,15 @@ const searchQuery = ref('')
 
 const showAddModal = ref(false)
 const submitting = ref(false)
+
+const showEditModal = ref(false)
+const submittingEdit = ref(false)
+const editStudentForm = ref({
+  name1: '',
+  name2: '',
+  name3: '',
+  classId: ''
+})
 
 // Drawer refs
 const showDetailsDrawer = ref(false)
@@ -416,6 +478,59 @@ const submitStudent = async () => {
     toast.error(error.response?.data?.error?.message || error.message || 'Failed to add student')
   } finally {
     submitting.value = false
+  }
+}
+
+let searchTimeout: any = null;
+const handleInputSearch = () => {
+  if (searchTimeout) clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    if (searchQuery.value.trim().length >= 1) {
+      searchStudents();
+    } else {
+      students.value = [];
+      hasSearched.value = false;
+    }
+  }, 400);
+}
+
+const openEditModal = () => {
+  if (selectedStudent.value && selectedStudent.value.student) {
+    const st = selectedStudent.value.student
+    editStudentForm.value = {
+      name1: st.name1 || '',
+      name2: st.name2 || '',
+      name3: st.name3 || '',
+      classId: st.classId || st.class || ''
+    }
+    showEditModal.value = true
+  }
+}
+
+const submitEditStudent = async () => {
+  if (!selectedStudent.value || !selectedStudent.value.student) return
+  submittingEdit.value = true
+  try {
+    const adm = selectedStudent.value.student.adm
+    const payload = {
+      name1: editStudentForm.value.name1,
+      name2: editStudentForm.value.name2,
+      name3: editStudentForm.value.name3,
+      classId: parseInt(editStudentForm.value.classId as string, 10)
+    }
+    const res = await api.put(`/students/${adm}`, payload)
+    if (res.success) {
+      toast.success('Student updated successfully!')
+      showEditModal.value = false
+      await openStudentDetails(selectedStudent.value.student)
+      if (hasSearched.value && searchQuery.value) {
+        await searchStudents()
+      }
+    }
+  } catch (error: any) {
+    toast.error('Failed to update student: ' + (error.response?.data?.error?.message || error.message))
+  } finally {
+    submittingEdit.value = false
   }
 }
 </script>

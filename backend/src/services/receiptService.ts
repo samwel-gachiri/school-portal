@@ -1,4 +1,5 @@
 import { DatabaseConnection } from '../config/database';
+import { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 
 export interface ReceiptData {
   name: string;
@@ -160,12 +161,58 @@ class ReceiptService {
     return receipts as ReceiptData[];
   }
 
-  /**
-   * Mark receipts as printed
-   */
   async markReceiptsAsPrinted(receiptNumbers: number[]): Promise<void> {
-    // Payment table doesn't have printed column, skip marking
-    console.log(`Would mark ${receiptNumbers.length} payments as printed, but no printed column exists`);
+    if (!receiptNumbers || receiptNumbers.length === 0) return;
+
+    const placeholders = receiptNumbers.map(() => '?').join(',');
+    const query = `
+      SELECT 
+        st.name1, st.name2, st.name3,
+        pt.adm, 
+        pt.payment_id as receiptNO,
+        st.class,
+        st.stream,
+        pt.dop,
+        pt.term,
+        pt.year_paid as year,
+        pt.amount,
+        pt.balance,
+        pt.name as item
+      FROM payment pt
+      JOIN student st ON pt.adm = st.adm
+      WHERE pt.payment_id IN (${placeholders})
+    `;
+    
+    const receipts = await this.db.query(query, receiptNumbers);
+    
+    if (!receipts || (receipts as any[]).length === 0) return;
+
+    const insertQuery = `
+      INSERT IGNORE INTO printtable 
+      (name1, name2, name3, adm, receiptNO, class, stream, dop, term, year, amount, balance, item, printed)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const values = (receipts as any[]).map((r: any) => [
+      r.name1 || '',
+      r.name2 || '',
+      r.name3 || '',
+      r.adm,
+      r.receiptNO,
+      r.class ? r.class.toString() : '',
+      r.stream ? r.stream.toString() : '',
+      r.dop,
+      r.term || '',
+      r.year,
+      r.amount?.toString() || '0',
+      r.balance?.toString() || '0',
+      r.item || '',
+      'no'
+    ]);
+
+    for (const val of values) {
+      await this.db.query(insertQuery, val);
+    }
   }
 
   /**
