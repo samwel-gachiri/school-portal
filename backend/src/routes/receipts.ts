@@ -51,11 +51,11 @@ router.get('/class/:className', receiptController.getReceiptsByClass);
 router.get('/previous', receiptController.getPreviousReceipts);
 
 /**
- * @route POST /api/receipts/mark-printed
- * @desc Mark receipts as printed
+ * @route POST /api/receipts/print-receipts
+ * @desc Mark selected receipts as printed
  * @access Private
  */
-router.post('/mark-printed', receiptController.markAsPrinted);
+router.post('/print-receipts', receiptController.markAsPrinted);
 
 /**
  * @route GET /api/receipts/config

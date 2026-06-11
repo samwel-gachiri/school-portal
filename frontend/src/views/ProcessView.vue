@@ -151,8 +151,8 @@
                 @click="viewHistory"
                 class="btn-secondary"
               >
-                <ClockIcon class="h-4 w-4 mr-2" />
-                View History
+                <DocumentTextIcon class="h-4 w-4 mr-2" />
+                View Receipts
               </button>
             </div>
           </div>
@@ -307,7 +307,7 @@ const startOver = () => {
 }
 
 const viewHistory = () => {
-  router.push('/history')
+  router.push('/receipts')
 }
 
 // Lifecycle

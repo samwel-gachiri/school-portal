@@ -16,6 +16,7 @@ import receiptsRoutes from './routes/receipts';
 import equityRoutes from './routes/equity';
 import promotionRoutes from './routes/promotion';
 import chargesRoutes from './routes/charges';
+import schoolRoutes from './routes/school';
 
 const app = express();
 const healthService = new HealthService();
@@ -67,6 +68,7 @@ app.use('/api/receipts', receiptsRoutes);
 app.use('/api/equity', equityRoutes);
 app.use('/api/promotion', promotionRoutes);
 app.use('/api/charges', chargesRoutes);
+app.use('/api/school', schoolRoutes);
 
 console.log('✅ Equity routes registered at /api/equity');
 console.log('✅ Promotion routes registered at /api/promotion');

@@ -8,12 +8,14 @@ export const chargeController = {
     try {
       const defaults = await chargeService.getCurrentTermYear();
       const classes = await chargeService.getClasses();
+      const streams = await chargeService.getStreams();
       return res.json({
         success: true,
         data: {
           term: defaults.term,
           year: defaults.year,
-          classes
+          classes,
+          streams
         }
       });
     } catch (error) {

@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+  <div class="w-full py-6 sm:px-6 lg:px-8">
     <!-- Header -->
     <div class="md:flex md:items-center md:justify-between mb-6">
       <div class="flex-1 min-w-0">
@@ -136,14 +136,17 @@
               <div class="grid grid-cols-2 gap-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-700">Class *</label>
-                  <select v-model="studentForm.classId" required class="mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                  <select v-model="studentForm.classId" required @change="studentForm.streamId = ''" class="mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                     <option value="" disabled>Select Class</option>
                     <option v-for="c in classes" :key="c.class_id" :value="c.class_id">{{ c.name }}</option>
                   </select>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700">Date of Birth</label>
-                  <input type="date" v-model="studentForm.dob" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                  <label class="block text-sm font-medium text-gray-700">Stream</label>
+                  <select v-model="studentForm.streamId" :disabled="!studentForm.classId" class="mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <option value="" disabled>Select Stream</option>
+                    <option v-for="s in filteredStreams" :key="s.stream_id" :value="s.stream_id">{{ s.name }}</option>
+                  </select>
                 </div>
               </div>
 
@@ -215,11 +218,20 @@
                 <label class="block text-sm font-medium text-gray-700">Last Name</label>
                 <input type="text" v-model="editStudentForm.name3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 sm:text-sm">
               </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700">Class *</label>
-                <select v-model="editStudentForm.classId" required class="mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 sm:text-sm">
-                  <option v-for="c in classes" :key="c.class_id" :value="c.class_id">{{ c.name }}</option>
-                </select>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">Class *</label>
+                  <select v-model="editStudentForm.classId" required @change="editStudentForm.streamId = ''" class="mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 sm:text-sm">
+                    <option v-for="c in classes" :key="c.class_id" :value="c.class_id">{{ c.name }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">Stream</label>
+                  <select v-model="editStudentForm.streamId" :disabled="!editStudentForm.classId" class="mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 sm:text-sm">
+                    <option value="">Select Stream</option>
+                    <option v-for="s in streams.filter(s => s.class === editStudentForm.classId)" :key="s.stream_id" :value="s.stream_id">{{ s.name }}</option>
+                  </select>
+                </div>
               </div>
               <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
                 <button type="submit" :disabled="submittingEdit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-2 sm:text-sm">
@@ -277,7 +289,12 @@
                   </div>
                   <div class="mt-2 max-w-2xl text-sm text-gray-500 flex justify-between">
                     <span><strong class="text-gray-700">Adm:</strong> {{ selectedStudent.student.adm }}</span>
-                    <span><strong class="text-gray-700">Class:</strong> {{ selectedStudent.student.class }}</span>
+                    <span>
+                      <strong class="text-gray-700">Class:</strong> {{ selectedStudent.student.class }}
+                      <span v-if="selectedStudent.student.stream">
+                        (<strong class="text-gray-700">Stream:</strong> {{ selectedStudent.student.stream }})
+                      </span>
+                    </span>
                   </div>
                   <div class="mt-3 bg-white p-3 rounded-md shadow-sm border border-gray-100 flex justify-between items-center">
                     <span class="text-sm font-medium text-gray-500">Current Balance</span>
@@ -343,7 +360,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useToast } from 'vue-toastification'
 import api from '@/services/api'
 
@@ -351,6 +368,7 @@ const toast = useToast()
 
 const students = ref<any[]>([])
 const classes = ref<any[]>([])
+const streams = ref<any[]>([])
 const loading = ref(false)
 const hasSearched = ref(false)
 const searchQuery = ref('')
@@ -364,7 +382,8 @@ const editStudentForm = ref({
   name1: '',
   name2: '',
   name3: '',
-  classId: ''
+  classId: '' as string | number,
+  streamId: '' as string | number
 })
 
 // Drawer refs
@@ -377,7 +396,7 @@ const defaultForm = {
   name2: '',
   name3: '',
   fphone: '',
-  dob: '',
+  streamId: '',
   classId: '',
   applyAdmissionCharge: true,
   admissionChargeAmount: 500
@@ -385,13 +404,19 @@ const defaultForm = {
 
 const studentForm = ref({ ...defaultForm })
 
+const filteredStreams = computed(() => {
+  if (!studentForm.value.classId) return []
+  return streams.value.filter(s => s.class === studentForm.value.classId)
+})
+
 onMounted(async () => {
   // Fetch classes for the dropdown. 
   // The /charges/defaults endpoint already returns the list of classes, so we can reuse it.
   try {
     const res = await api.get<any>('/charges/defaults')
-    if (res.success && res.data && res.data.classes) {
-      classes.value = res.data.classes
+    if (res.success && res.data) {
+      if (res.data.classes) classes.value = res.data.classes
+      if (res.data.streams) streams.value = res.data.streams
     }
   } catch (e) {
     console.error('Failed to load classes', e)
@@ -501,7 +526,8 @@ const openEditModal = () => {
       name1: st.name1 || '',
       name2: st.name2 || '',
       name3: st.name3 || '',
-      classId: st.classId || st.class || ''
+      classId: st.classId || st.class || '',
+      streamId: st.streamId || st.stream || ''
     }
     showEditModal.value = true
   }
@@ -516,7 +542,8 @@ const submitEditStudent = async () => {
       name1: editStudentForm.value.name1,
       name2: editStudentForm.value.name2,
       name3: editStudentForm.value.name3,
-      classId: parseInt(editStudentForm.value.classId as string, 10)
+      classId: parseInt(editStudentForm.value.classId as string, 10),
+      streamId: parseInt(editStudentForm.value.streamId as string, 10) || null
     }
     const res = await api.put(`/students/${adm}`, payload)
     if (res.success) {

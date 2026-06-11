@@ -28,12 +28,7 @@ const router = createRouter({
       component: () => import('@/views/ProcessView.vue'),
       meta: { requiresAuth: true }
     },
-    {
-      path: '/history',
-      name: 'history',
-      component: () => import('@/views/HistoryView.vue'),
-      meta: { requiresAuth: true }
-    },
+
     {
       path: '/manual-fees',
       name: 'manual-fees',

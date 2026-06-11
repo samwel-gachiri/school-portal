@@ -1,16 +1,15 @@
 <template>
   <div class="min-h-screen bg-gray-50 py-8">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between items-center mb-8">
+    <div class="w-full px-4 sm:px-6 lg:px-8">
+      <div class="mb-8 flex flex-col items-start gap-4">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900">Charges Management</h1>
-          <p class="mt-2 text-gray-600">Apply new charges to students or an entire class</p>
+          <h1 class="text-3xl font-bold text-gray-900">Student Charges</h1>
         </div>
         <button
           @click="showClassChargeModal = true"
           class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
         >
-          Add Class Charge
+          Add Charges to Students in a Class
         </button>
       </div>
 
@@ -154,14 +153,6 @@
         </div>
 
         <div v-else class="text-center py-8 text-gray-500">
-          <p>Search and select a student to view and add charges.</p>
-          
-          <!-- Recent Global Charges Summary could go here -->
-          <div class="mt-8 text-left max-w-2xl mx-auto bg-white p-6 rounded-lg border shadow-sm">
-             <h3 class="text-lg font-medium text-gray-900 mb-4">Charges Overview</h3>
-             <p class="text-sm text-gray-600">Use the search above to find a specific student to view their charge history or apply a new charge.</p>
-             <p class="text-sm text-gray-600 mt-2">To apply a charge to an entire class, use the <strong>Add Class Charge</strong> button at the top right.</p>
-          </div>
         </div>
       </div>
     </div>

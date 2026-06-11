@@ -13,8 +13,10 @@ export interface StudentMatch {
   name1: string;
   name2: string;
   name3?: string;
-  class: number;
-  stream?: number;
+  class: number | string;
+  classId?: number;
+  stream?: number | string;
+  streamId?: number;
   currentBalance: number;
   matchConfidence: number;
 }

@@ -20,6 +20,17 @@ export const chargeService = {
     return classes || [];
   },
 
+  // Get all streams
+  async getStreams() {
+    const db = DatabaseConnection.getInstance();
+    const streams = await db.query(`
+      SELECT stream_id, name, class 
+      FROM stream 
+      ORDER BY name ASC
+    `);
+    return streams || [];
+  },
+
   // Get current term and year from school table
   async getCurrentTermYear() {
     const db = DatabaseConnection.getInstance();

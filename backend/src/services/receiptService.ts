@@ -187,10 +187,19 @@ class ReceiptService {
     
     if (!receipts || (receipts as any[]).length === 0) return;
 
+    const updateQuery = `UPDATE printtable SET printed = 'yes' WHERE printed = 'no'`;
+    await this.db.queryRaw(updateQuery);
+
     const insertQuery = `
-      INSERT IGNORE INTO printtable 
+      INSERT INTO printtable 
       (name1, name2, name3, adm, receiptNO, class, stream, dop, term, year, amount, balance, item, printed)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE 
+        name1=VALUES(name1), name2=VALUES(name2), name3=VALUES(name3), 
+        adm=VALUES(adm), class=VALUES(class), stream=VALUES(stream), 
+        dop=VALUES(dop), term=VALUES(term), year=VALUES(year), 
+        amount=VALUES(amount), balance=VALUES(balance), item=VALUES(item), 
+        printed=VALUES(printed)
     `;
 
     const values = (receipts as any[]).map((r: any) => [

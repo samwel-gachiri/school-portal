@@ -21,6 +21,7 @@ import receiptsRoutes from "./routes/receipts";
 import equityRoutes from "./routes/equity";
 import promotionRoutes from "./routes/promotion";
 import chargesRoutes from "./routes/charges";
+import schoolRoutes from "./routes/school";
 
 class Server {
   private app: express.Application;
@@ -100,6 +101,7 @@ class Server {
     this.app.use("/api/equity", equityRoutes);
     this.app.use("/api/promotion", promotionRoutes);
     this.app.use("/api/charges", chargesRoutes);
+    this.app.use("/api/school", schoolRoutes);
 
     console.log("✅ Manual fees routes registered at /api/manual-fees");
     console.log("✅ Receipts routes registered at /api/receipts");

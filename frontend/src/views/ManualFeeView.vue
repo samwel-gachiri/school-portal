@@ -1,15 +1,14 @@
 <template>
   <div class="min-h-screen bg-gray-50 py-8">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="w-full px-4 sm:px-6 lg:px-8">
       <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900">Manual Fee Payment Entry</h1>
-        <p class="mt-2 text-gray-600">Record student fee payments manually</p>
+        <h1 class="text-3xl font-bold text-gray-900">Add Payment</h1>
       </div>
 
       <div class="bg-white rounded-lg shadow p-6">
         <!-- Student Search Section -->
         <div class="mb-8">
-          <h2 class="text-lg font-semibold text-gray-900 mb-4">Student Search</h2>
+          <h2 class="text-lg font-semibold text-gray-900 mb-4">Give in the name of the student</h2>
           <div class="relative">
             <label for="search" class="block text-sm font-medium text-gray-700 mb-2">
               Search by Admission Number or Name
@@ -262,7 +261,6 @@
 
         <!-- No Student Selected -->
         <div v-else class="text-center py-8 text-gray-500">
-          <p>Search and select a student to record a payment</p>
         </div>
       </div>
 

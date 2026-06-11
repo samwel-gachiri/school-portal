@@ -1,71 +1,11 @@
 <template>
   <AuthGuard>
-    <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div class="w-full py-8 px-4 sm:px-6 lg:px-8">
       <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-900">Print Payment Receipts</h1>
-        <p class="mt-2 text-gray-600">
-          Select payments and print receipts for school fees
-        </p>
       </div>
 
-      <!-- Statistics Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <CreditCardIcon class="h-8 w-8 text-primary-600" />
-            </div>
-            <div class="ml-4">
-              <div class="text-2xl font-bold text-gray-900">
-                {{ payments.length }}
-              </div>
-              <div class="text-sm text-gray-500">Total Payments</div>
-            </div>
-          </div>
-        </div>
 
-        <!-- <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <BanknotesIcon class="h-8 w-8 text-green-600" />
-            </div>
-            <div class="ml-4">
-              <div class="text-2xl font-bold text-gray-900">
-                KSh {{ totalAmount.toLocaleString() }}
-              </div>
-              <div class="text-sm text-gray-500">Total Amount</div>
-            </div>
-          </div>
-        </div> -->
-
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <UserGroupIcon class="h-8 w-8 text-blue-600" />
-            </div>
-            <div class="ml-4">
-              <div class="text-2xl font-bold text-gray-900">
-                {{ uniqueStudents }}
-              </div>
-              <div class="text-sm text-gray-500">Unique Students</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <PrinterIcon class="h-8 w-8 text-orange-600" />
-            </div>
-            <div class="ml-4">
-              <div class="text-2xl font-bold text-gray-900">
-                {{ selectedPayments.length }}
-              </div>
-              <div class="text-sm text-gray-500">Selected for Print</div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <!-- Filters and Search -->
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
@@ -126,23 +66,10 @@
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
         <div class="flex items-center justify-between">
           <div class="flex items-center space-x-4">
-            <div class="flex items-center">
-              <input
-                id="selectAll"
-                type="checkbox"
-                v-model="selectAll"
-                @change="toggleSelectAll"
-                class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-              />
-              <label for="selectAll" class="ml-2 text-sm text-gray-700">
-                Select All ({{ filteredPayments.length }} payments)
-              </label>
-            </div>
+
           </div>
           <div class="flex items-center space-x-4">
-            <span class="text-sm text-gray-500">
-              {{ selectedPayments.length }} selected
-            </span>
+
             <button
               @click="printSelected"
               :disabled="selectedPayments.length === 0"
@@ -159,7 +86,7 @@
       <div class="bg-white rounded-lg shadow-sm border border-gray-200">
         <div class="px-6 py-4 border-b border-gray-200">
           <div class="flex items-center justify-between">
-            <h3 class="text-lg font-medium text-gray-900">Payment Records</h3>
+            <h3 class="text-lg font-medium text-gray-900">Select payments to print Receipts for</h3>
             <div class="flex items-center space-x-4">
               <span class="text-sm text-gray-500">
                 Showing {{ filteredPayments.length }} of {{ payments.length }} payments
@@ -435,17 +362,18 @@ const printSelected = async () => {
 
   try {
     // Skip preview, directly send to backend and launch printer
-    await api.post('/receipts/mark-printed', { receiptNumbers: selectedPayments.value })
-      
-    // Trigger the local Java Desktop Application via Custom URI Protocol
+    await api.post('/receipts/print-receipts', { receiptNumbers: selectedPayments.value })
+
+    // Launch standalone printer app
     const iframe = document.createElement('iframe')
     iframe.style.display = 'none'
-    iframe.src = 'schoolprint://start'
     document.body.appendChild(iframe)
-    setTimeout(() => document.body.removeChild(iframe), 1000)
-
-    selectedPayments.value = []
-    selectAll.value = false
+    iframe.src = 'schoolprint://start'
+    setTimeout(() => {
+      document.body.removeChild(iframe)
+      selectedPayments.value = []
+      selectAll.value = false
+    }, 1000)
   } catch (error) {
     console.error('Error preparing payments for printing:', error)
     alert('Error triggering printer')
@@ -456,7 +384,7 @@ const handlePrint = async (receiptNumbers: number[]) => {
   try {
     // Mark receipts as printed (if needed)
     if (receiptNumbers.length > 0) {
-      await api.post('/receipts/mark-printed', { receiptNumbers })
+      await api.post('/receipts/print-receipts', { receiptNumbers })
       
       // Trigger the local Java Desktop Application via Custom URI Protocol
       const iframe = document.createElement('iframe')

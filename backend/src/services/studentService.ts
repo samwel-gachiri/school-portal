@@ -333,10 +333,14 @@ export class StudentService {
           s.name1,
           s.name2,
           s.name3,
-          s.class,
-          s.stream,
+          s.class as classId,
+          c.name as className,
+          s.stream as streamId,
+          st.name as streamName,
           s.balance as currentBalance
         FROM student s
+        LEFT JOIN class c ON s.class = c.class_id
+        LEFT JOIN stream st ON s.stream = st.stream_id
         WHERE s.adm = ?`,
         [admissionNumber]
       );
@@ -351,8 +355,10 @@ export class StudentService {
         name1: student.name1,
         name2: student.name2,
         name3: student.name3,
-        class: student.class,
-        stream: student.stream,
+        class: student.className || student.classId,
+        classId: student.classId,
+        stream: student.streamName || student.streamId,
+        streamId: student.streamId,
         currentBalance: student.currentBalance || 0,
         matchConfidence: 1.0
       };
