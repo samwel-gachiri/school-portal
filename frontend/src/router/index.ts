@@ -67,6 +67,18 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/admin/classes',
+      name: 'classes',
+      component: () => import('@/views/admin/ClassesView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/admin/classes/:classId',
+      name: 'class-details',
+      component: () => import('@/views/admin/ClassDetailsView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('@/views/NotFoundView.vue')

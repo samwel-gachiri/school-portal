@@ -129,6 +129,12 @@ const menuGroups = [
     ]
   },
   {
+    title: 'Classes',
+    items: [
+      { name: 'classes', path: '/admin/classes', label: 'Classes', icon: AcademicCapIcon }
+    ]
+  },
+  {
     title: 'Finances',
     items: [
       { name: 'manual-fees', path: '/manual-fees', label: 'Record payment', icon: DocumentPlusIcon },

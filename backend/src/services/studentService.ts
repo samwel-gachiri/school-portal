@@ -22,6 +22,7 @@ export interface CreateStudentData {
   streamId?: number | null;
   applyAdmissionCharge: boolean;
   admissionChargeAmount?: number;
+  applySchoolFees?: boolean;
 }
 
 export interface UpdateStudentData {
@@ -476,10 +477,42 @@ export class StudentService {
 
       let finalBalance = 0;
 
+      // Apply school fees if requested
+      if (data.applySchoolFees && fees > 0) {
+        finalBalance += fees;
+
+        const [termResult] = await conn.query(`SELECT term, year FROM school ORDER BY year DESC, term DESC LIMIT 1`);
+        const termRows = termResult as any[];
+        const term = termRows.length > 0 ? termRows[0].term : 'ONE';
+        const yearAss = termRows.length > 0 ? termRows[0].year : new Date().getFullYear();
+        const dateAss = new Date().toISOString().split('T')[0];
+
+        // Insert charge
+        const [chargeResult] = await conn.query(`
+          INSERT INTO charges (adm, name, amount, balance, term, year_ass, date_ass)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, [adm, 'SCHOOL_FEES', fees, finalBalance, term, yearAss, dateAss]);
+
+        const chargeId = (chargeResult as any).insertId;
+
+        // Log transaction
+        await conn.query(`
+          INSERT INTO processing_log (user_id, action_type, details)
+          VALUES (?, ?, ?)
+        `, [userId, "insert", JSON.stringify({
+          type: "CHARGE",
+          chargeId,
+          adm,
+          name: 'SCHOOL_FEES',
+          amount: fees,
+          newBalance: finalBalance
+        })]);
+      }
+
       // Apply admission charge if requested
       if (data.applyAdmissionCharge && data.admissionChargeAmount && data.admissionChargeAmount > 0) {
         const amount = data.admissionChargeAmount;
-        finalBalance = amount;
+        finalBalance += amount;
 
         // Get current term/year
         const [termResult] = await conn.query(`SELECT term, year FROM school ORDER BY year DESC, term DESC LIMIT 1`);
@@ -496,9 +529,6 @@ export class StudentService {
 
         const chargeId = (chargeResult as any).insertId;
 
-        // Update student balance
-        await conn.query(`UPDATE student SET balance = ? WHERE adm = ?`, [finalBalance, adm]);
-
         // Log transaction
         await conn.query(`
           INSERT INTO processing_log (user_id, action_type, details)
@@ -511,6 +541,11 @@ export class StudentService {
           amount,
           newBalance: finalBalance
         })]);
+      }
+
+      // Update student balance if any charges were applied
+      if (finalBalance > 0) {
+        await conn.query(`UPDATE student SET balance = ? WHERE adm = ?`, [finalBalance, adm]);
       }
 
       return {

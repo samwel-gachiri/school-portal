@@ -12,6 +12,7 @@ node_modules/
 backend/.env
 backend/.env.production
 frontend/.env
+frontend/package-lock.json
 frontend/.env.production
 frontend/node_modules
 

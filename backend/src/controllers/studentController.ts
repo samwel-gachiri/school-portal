@@ -290,7 +290,8 @@ export class StudentController {
         classId: Joi.number().integer().positive().required(),
         streamId: Joi.number().integer().positive().optional().allow(null),
         applyAdmissionCharge: Joi.boolean().default(true),
-        admissionChargeAmount: Joi.number().min(0).default(500)
+        admissionChargeAmount: Joi.number().min(0).default(500),
+        applySchoolFees: Joi.boolean().default(true)
       });
 
       const { error, value } = schema.validate(req.body);

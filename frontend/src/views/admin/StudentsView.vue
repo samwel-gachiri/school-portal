@@ -156,6 +156,16 @@
               </div>
 
               <div class="border-t border-gray-200 pt-4 mt-4">
+                <div class="flex items-start mb-4">
+                  <div class="flex items-center h-5">
+                    <input id="applySchoolFees" type="checkbox" v-model="studentForm.applySchoolFees" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                  </div>
+                  <div class="ml-3 text-sm">
+                    <label for="applySchoolFees" class="font-medium text-gray-700">Apply School Fees</label>
+                    <p class="text-gray-500">Automatically add the standard 'SCHOOL_FEES' for the selected class.</p>
+                  </div>
+                </div>
+
                 <div class="flex items-start">
                   <div class="flex items-center h-5">
                     <input id="applyCharge" type="checkbox" v-model="studentForm.applyAdmissionCharge" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
@@ -399,7 +409,8 @@ const defaultForm = {
   streamId: '',
   classId: '',
   applyAdmissionCharge: true,
-  admissionChargeAmount: 500
+  admissionChargeAmount: 500,
+  applySchoolFees: true
 }
 
 const studentForm = ref({ ...defaultForm })
@@ -484,7 +495,8 @@ const submitStudent = async () => {
       // Ensure empty strings for optional fields are treated properly
       name3: studentForm.value.name3 || '',
       fphone: studentForm.value.fphone || '',
-      dob: studentForm.value.dob || ''
+      dob: studentForm.value.dob || '',
+      streamId: studentForm.value.streamId ? parseInt(studentForm.value.streamId as string, 10) : null
     }
     
     const res = await api.post<any>('/students', payload)
