@@ -604,4 +604,44 @@ export class StudentService {
       return true;
     });
   }
+
+  public async transferStudent(adm: number, userId: number): Promise<boolean> {
+    return this.db.transaction(async (conn) => {
+      // 1. Insert into transfer
+      await conn.query(`
+        INSERT INTO transfer (name1, name2, name3, mphone, fees, balance, adm, class, stream, paycount, fees_item)
+        SELECT name1, name2, name3, mphone, fees, balance, adm, class, stream, paycount, fees_item
+        FROM student WHERE adm = ?
+      `, [adm]);
+
+      // 2. Insert into transfer_charges
+      await conn.query(`
+        INSERT INTO transfer_charges (name, amount, balance, term, year_ass, adm)
+        SELECT name, amount, balance, term, year_ass, adm
+        FROM charges WHERE adm = ?
+      `, [adm]);
+
+      // 3. Insert into transfer_payment
+      await conn.query(`
+        INSERT INTO transfer_payment (name, amount, balance, term, year_paid, adm, bank, ref, dop)
+        SELECT name, amount, balance, term, year_paid, adm, bank, ref, dop
+        FROM payment WHERE adm = ?
+      `, [adm]);
+
+      // 4. Delete from student (assuming cascading deletes or we explicitly delete)
+      await conn.query(`DELETE FROM payment WHERE adm = ?`, [adm]);
+      await conn.query(`DELETE FROM charges WHERE adm = ?`, [adm]);
+      await conn.query(`DELETE FROM student WHERE adm = ?`, [adm]);
+
+      await conn.query(`
+        INSERT INTO processing_log (user_id, action_type, details)
+        VALUES (?, ?, ?)
+      `, [userId, "update", JSON.stringify({
+        type: "STUDENT_TRANSFER",
+        adm
+      })]);
+
+      return true;
+    });
+  }
 }

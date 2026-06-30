@@ -16,5 +16,6 @@ router.post('/manual-match', studentController.manualMatch);
 router.post('/', studentController.createStudent);
 router.get('/:admissionNumber', studentController.getStudentDetails);
 router.put('/:admissionNumber', studentController.updateStudent);
+router.post('/:admissionNumber/transfer', studentController.transferStudent);
 
 export default router;

@@ -395,4 +395,44 @@ export class StudentController {
       });
     }
   };
+
+  public transferStudent = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const admissionNumber = parseInt(req.params.admissionNumber, 10);
+      if (isNaN(admissionNumber)) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_PARAMETERS', message: 'Invalid admission number' }
+        });
+        return;
+      }
+
+      if (!req.user || !req.user.user_id) {
+        res.status(401).json({
+          success: false,
+          error: { code: 'UNAUTHORIZED', message: 'User not authenticated' }
+        });
+        return;
+      }
+
+      await this.studentService.transferStudent(admissionNumber, req.user.user_id);
+
+      res.status(200).json({
+        success: true,
+        message: 'Student transferred successfully',
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('Transfer student error:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'TRANSFER_FAILED',
+          message: error instanceof Error ? error.message : 'Failed to transfer student'
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+  };
 }

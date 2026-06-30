@@ -81,7 +81,7 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {{ student.name1 }} {{ student.name2 }} {{ student.name3 || '' }}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ student.className || student.class }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ formatClassStream(student.class, student.stream) }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <span :class="student.currentBalance > 0 ? 'text-red-600 font-semibold' : 'text-green-600'">
                         {{ formatCurrency(student.currentBalance) }}
@@ -202,7 +202,7 @@
     </div>
 
     <!-- Edit Student Modal -->
-    <div v-if="showEditModal" class="fixed inset-0 overflow-y-auto z-50">
+    <div v-if="showEditModal" class="fixed inset-0 overflow-y-auto z-[60]">
       <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div class="fixed inset-0 transition-opacity" aria-hidden="true" @click="showEditModal = false">
           <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
@@ -243,9 +243,12 @@
                   </select>
                 </div>
               </div>
-              <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
-                <button type="submit" :disabled="submittingEdit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-2 sm:text-sm">
+              <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-3 sm:gap-3 sm:grid-flow-row-dense">
+                <button type="submit" :disabled="submittingEdit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-3 sm:text-sm">
                   {{ submittingEdit ? 'Saving...' : 'Save Changes' }}
+                </button>
+                <button type="button" @click="transferStudent" :disabled="transferring" class="mt-3 w-full inline-flex justify-center rounded-md border border-red-300 shadow-sm px-4 py-2 bg-red-50 text-base font-medium text-red-700 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:mt-0 sm:col-start-2 sm:text-sm">
+                  {{ transferring ? 'Deleting...' : 'Delete student' }}
                 </button>
                 <button type="button" @click="showEditModal = false" :disabled="submittingEdit" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:col-start-1 sm:text-sm">
                   Cancel
@@ -300,10 +303,7 @@
                   <div class="mt-2 max-w-2xl text-sm text-gray-500 flex justify-between">
                     <span><strong class="text-gray-700">Adm:</strong> {{ selectedStudent.student.adm }}</span>
                     <span>
-                      <strong class="text-gray-700">Class:</strong> {{ selectedStudent.student.class }}
-                      <span v-if="selectedStudent.student.stream">
-                        (<strong class="text-gray-700">Stream:</strong> {{ selectedStudent.student.stream }})
-                      </span>
+                      <strong class="text-gray-700">Class:</strong> {{ formatClassStream(selectedStudent.student.class, selectedStudent.student.stream) }}
                     </span>
                   </div>
                   <div class="mt-3 bg-white p-3 rounded-md shadow-sm border border-gray-100 flex justify-between items-center">
@@ -399,6 +399,7 @@ const editStudentForm = ref({
 // Drawer refs
 const showDetailsDrawer = ref(false)
 const loadingDetails = ref(false)
+const transferring = ref(false)
 const selectedStudent = ref<any>(null)
 
 const defaultForm = {
@@ -441,6 +442,21 @@ const formatCurrency = (amount: number) => {
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '';
   return new Date(dateStr).toLocaleDateString('en-KE', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+const formatClassStream = (classId: number | string, streamId?: number | string) => {
+  if (!classId) return ''
+  const c = classes.value.find(cl => cl.class_id == classId)
+  if (!c) return classId
+  
+  let formatted = c.name
+  if (streamId) {
+    const s = streams.value.find(st => st.stream_id == streamId)
+    if (s) {
+      formatted += ` | ${s.name}`
+    }
+  }
+  return formatted
 }
 
 const openStudentDetails = async (student: any) => {
@@ -529,6 +545,29 @@ const handleInputSearch = () => {
       hasSearched.value = false;
     }
   }, 400);
+}
+
+const transferStudent = async () => {
+  if (!selectedStudent.value || !selectedStudent.value.student) return
+  if (!confirm(`Are you sure you want to delete ${selectedStudent.value.student.name1} ${selectedStudent.value.student.name2}?`)) return
+  
+  transferring.value = true
+  try {
+    const adm = selectedStudent.value.student.adm
+    await api.post(`/students/${adm}/transfer`)
+    
+    // Close modal and refresh
+    showEditModal.value = false
+    showDetailsDrawer.value = false
+    if (searchQuery.value) {
+      searchStudents()
+    }
+  } catch (error: any) {
+    console.error('Failed to transfer student:', error)
+    alert(error.response?.data?.error?.message || 'Failed to transfer student')
+  } finally {
+    transferring.value = false
+  }
 }
 
 const openEditModal = () => {
