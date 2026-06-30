@@ -239,7 +239,7 @@
                   <label class="block text-sm font-medium text-gray-700">Stream</label>
                   <select v-model="editStudentForm.streamId" :disabled="!editStudentForm.classId" class="mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 sm:text-sm">
                     <option value="">Select Stream</option>
-                    <option v-for="s in streams.filter(s => s.class === editStudentForm.classId)" :key="s.stream_id" :value="s.stream_id">{{ s.name }}</option>
+                    <option v-for="s in streams.filter(s => s.class == editStudentForm.classId)" :key="s.stream_id" :value="s.stream_id">{{ s.name }}</option>
                   </select>
                 </div>
               </div>
@@ -418,7 +418,7 @@ const studentForm = ref({ ...defaultForm })
 
 const filteredStreams = computed(() => {
   if (!studentForm.value.classId) return []
-  return streams.value.filter(s => s.class === studentForm.value.classId)
+  return streams.value.filter(s => s.class == studentForm.value.classId)
 })
 
 onMounted(async () => {
