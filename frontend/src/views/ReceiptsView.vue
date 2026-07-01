@@ -135,9 +135,9 @@
                   <div class="text-sm text-gray-900">
                     {{ formatDate(payment.dop) }}
                   </div>
-                  <div class="text-xs text-gray-500">
+                  <!-- <div class="text-xs text-gray-500">
                     {{ formatTime(payment.dop) }}
-                  </div>
+                  </div> -->
                 </td>
 
                 <td class="table-cell">

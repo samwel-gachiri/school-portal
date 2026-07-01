@@ -153,7 +153,7 @@ class ReceiptService {
       FROM payment pt
       JOIN student st ON pt.adm = st.adm
       JOIN school s ON 1=1
-      ORDER BY pt.dop DESC
+      ORDER BY pt.payment_id DESC
       LIMIT ${limit}
     `;
 
