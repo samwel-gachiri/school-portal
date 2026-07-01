@@ -131,7 +131,7 @@ class ReceiptController {
   /**
    * Mark receipts as printed
    */
-  async markAsPrinted(req: Request, res: Response): Promise<void> {
+  async printReceipts(req: Request, res: Response): Promise<void> {
     try {
       const { receiptNumbers } = req.body;
 
@@ -143,7 +143,7 @@ class ReceiptController {
         return;
       }
 
-      await receiptService.markReceiptsAsPrinted(receiptNumbers);
+      await receiptService.printReceipts(receiptNumbers);
       res.json({
         success: true,
         message: `Marked ${receiptNumbers.length} receipts as printed`

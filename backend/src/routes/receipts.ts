@@ -55,7 +55,7 @@ router.get('/previous', receiptController.getPreviousReceipts);
  * @desc Mark selected receipts as printed
  * @access Private
  */
-router.post('/print-receipts', receiptController.markAsPrinted);
+router.post('/print-receipts', receiptController.printReceipts);
 
 /**
  * @route GET /api/receipts/config

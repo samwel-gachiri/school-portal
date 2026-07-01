@@ -167,12 +167,12 @@
                   :class="{ 'border-red-300': referenceError }"
                   @input="handleReferenceInput"
                 />
-                <div v-if="referenceError" class="mt-1 text-sm text-red-600">
+                <!-- <div v-if="referenceError" class="mt-1 text-sm text-red-600">
                   {{ referenceError }}
                 </div>
                 <div v-if="duplicateWarning" class="mt-1 text-sm text-orange-600">
                   {{ duplicateWarning }}
-                </div>
+                </div> -->
               </div>
 
               <!-- Payment Date -->

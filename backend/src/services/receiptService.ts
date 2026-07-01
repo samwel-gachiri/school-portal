@@ -1,5 +1,4 @@
 import { DatabaseConnection } from '../config/database';
-import { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 
 export interface ReceiptData {
   name: string;
@@ -161,7 +160,7 @@ class ReceiptService {
     return receipts as ReceiptData[];
   }
 
-  async markReceiptsAsPrinted(receiptNumbers: number[]): Promise<void> {
+  async printReceipts(receiptNumbers: number[]): Promise<void> {
     if (!receiptNumbers || receiptNumbers.length === 0) return;
 
     const placeholders = receiptNumbers.map(() => '?').join(',');
@@ -170,8 +169,8 @@ class ReceiptService {
         st.name1, st.name2, st.name3,
         pt.adm, 
         pt.payment_id as receiptNO,
-        st.class,
-        st.stream,
+        coalesce(c.name, '') as class,
+        coalesce(s.name, '') as stream,
         pt.dop,
         pt.term,
         pt.year_paid as year,
@@ -180,42 +179,46 @@ class ReceiptService {
         pt.name as item
       FROM payment pt
       JOIN student st ON pt.adm = st.adm
+      JOIN class c on st.class = c.class_id
+      LEFT JOIN stream s on c.class_id = s.class
       WHERE pt.payment_id IN (${placeholders})
     `;
     
     const receipts = await this.db.query(query, receiptNumbers);
     
     if (!receipts || (receipts as any[]).length === 0) return;
-
+    
+    console.log(receipts)
     const updateQuery = `UPDATE printtable SET printed = 'yes' WHERE printed = 'no'`;
     await this.db.queryRaw(updateQuery);
 
     const insertQuery = `
       INSERT INTO printtable 
-      (name1, name2, name3, adm, receiptNO, class, stream, dop, term, year, amount, balance, item, printed)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (name1, name2, name3, adm, receiptNO, class, stream, dop, term, year, amount, balance, item, print_time, printed)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE 
         name1=VALUES(name1), name2=VALUES(name2), name3=VALUES(name3), 
         adm=VALUES(adm), class=VALUES(class), stream=VALUES(stream), 
         dop=VALUES(dop), term=VALUES(term), year=VALUES(year), 
-        amount=VALUES(amount), balance=VALUES(balance), item=VALUES(item), 
+        amount=VALUES(amount), balance=VALUES(balance), item=VALUES(item),
+        print_time=now(), 
         printed=VALUES(printed)
     `;
-
     const values = (receipts as any[]).map((r: any) => [
       r.name1 || '',
       r.name2 || '',
       r.name3 || '',
-      r.adm,
-      r.receiptNO,
+      r.adm || 0,
+      r.receiptNO || 0,
       r.class ? r.class.toString() : '',
       r.stream ? r.stream.toString() : '',
-      r.dop,
+      r.dop ? new Date(r.dop).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
       r.term || '',
-      r.year,
+      r.year || new Date().getFullYear(),
       r.amount?.toString() || '0',
       r.balance?.toString() || '0',
       r.item || '',
+      new Date(),
       'no'
     ]);
 
