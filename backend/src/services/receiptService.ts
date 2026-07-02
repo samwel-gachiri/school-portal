@@ -180,7 +180,7 @@ class ReceiptService {
       FROM payment pt
       JOIN student st ON pt.adm = st.adm
       JOIN class c on st.class = c.class_id
-      LEFT JOIN stream s on c.class_id = s.class
+      LEFT JOIN stream s on st.stream = s.stream_id
       WHERE pt.payment_id IN (${placeholders})
     `;
     
