@@ -133,8 +133,11 @@ class ReceiptService {
   /**
    * Get previous receipts (already printed)
    */
-  async getPreviousReceipts(limit: number = 100): Promise<ReceiptData[]> {
-    const query = `
+  async getPreviousReceipts(
+    limit: number = 100, 
+    options: { classId?: string; term?: string; year?: string; startDate?: string; endDate?: string } = {}
+  ): Promise<ReceiptData[]> {
+    let query = `
       SELECT 
         CONCAT_WS(' ', st.name1, st.name2, st.name3) as name,
         pt.adm, 
@@ -152,11 +155,35 @@ class ReceiptService {
       FROM payment pt
       JOIN student st ON pt.adm = st.adm
       JOIN school s ON 1=1
-      ORDER BY pt.payment_id DESC
-      LIMIT ${limit}
+      WHERE 1=1
     `;
 
-    const receipts = await this.db.queryRaw(query);
+    const queryParams: any[] = [];
+
+    if (options.classId) {
+      query += ` AND st.class = ?`;
+      queryParams.push(options.classId);
+    }
+    if (options.term) {
+      query += ` AND pt.term = ?`;
+      queryParams.push(options.term);
+    }
+    if (options.year) {
+      query += ` AND pt.year_paid = ?`;
+      queryParams.push(options.year);
+    }
+    if (options.startDate) {
+      query += ` AND pt.dop >= ?`;
+      queryParams.push(options.startDate);
+    }
+    if (options.endDate) {
+      query += ` AND pt.dop <= ?`;
+      queryParams.push(options.endDate);
+    }
+
+    query += ` ORDER BY pt.payment_id DESC LIMIT ${limit}`;
+
+    const receipts = await this.db.query(query, queryParams);
     return receipts as ReceiptData[];
   }
 

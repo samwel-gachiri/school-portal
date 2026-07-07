@@ -9,52 +9,41 @@
 
       <!-- Filters and Search -->
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
           <div>
-            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">
-              Search
-            </label>
-            <input
-              id="search"
-              v-model="searchQuery"
-              type="text"
-              class="input-field"
-              placeholder="Student name, reference, etc."
-              @input="debouncedSearch"
-            />
+            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+            <input id="search" v-model="searchQuery" type="text" class="input-field" placeholder="Student name, adm..." />
           </div>
-
           <div>
-            <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">
-              Start Date
-            </label>
-            <input
-              id="startDate"
-              v-model="startDate"
-              type="date"
-              class="input-field"
-              @change="loadPayments"
-            />
+            <label class="block text-sm font-medium text-gray-700 mb-1">Class</label>
+            <select v-model="classId" @change="loadPayments" class="input-field bg-white">
+              <option value="">All Classes</option>
+              <option v-for="c in classes" :key="c.class_id" :value="c.class_id">{{ c.name }}</option>
+            </select>
           </div>
-
           <div>
-            <label for="endDate" class="block text-sm font-medium text-gray-700 mb-1">
-              End Date
-            </label>
-            <input
-              id="endDate"
-              v-model="endDate"
-              type="date"
-              class="input-field"
-              @change="loadPayments"
-            />
+            <label class="block text-sm font-medium text-gray-700 mb-1">Term</label>
+            <select v-model="term" @change="loadPayments" class="input-field bg-white">
+              <option value="">All Terms</option>
+              <option value="ONE">ONE</option>
+              <option value="TWO">TWO</option>
+              <option value="THREE">THREE</option>
+            </select>
           </div>
-
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Year</label>
+            <input v-model="year" type="number" @change="loadPayments" class="input-field" placeholder="e.g. 2026" />
+          </div>
+          <div>
+            <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+            <input id="startDate" v-model="startDate" type="date" class="input-field" @change="loadPayments" />
+          </div>
+          <div>
+            <label for="endDate" class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+            <input id="endDate" v-model="endDate" type="date" class="input-field" @change="loadPayments" />
+          </div>
           <div class="flex items-end">
-            <button
-              @click="clearFilters"
-              class="btn-secondary w-full"
-            >
+            <button @click="clearFilters" class="btn-secondary w-full">
               <XMarkIcon class="h-4 w-4 mr-2" />
               Clear Filters
             </button>
@@ -254,8 +243,12 @@ interface Receipt {
 const isLoading = ref(false)
 const payments = ref<Receipt[]>([])
 const searchQuery = ref('')
+const classId = ref('')
+const term = ref('')
+const year = ref<number | ''>('')
 const startDate = ref('')
 const endDate = ref('')
+const classes = ref<any[]>([])
 const selectedPayments = ref<number[]>([])
 const selectAll = ref(false)
 const showPreview = ref(false)
@@ -274,18 +267,6 @@ const filteredPayments = computed(() => {
       payment.ref.toLowerCase().includes(query) ||
       payment.adm.toString().includes(query)
     )
-  }
-
-  // Filter by date range
-  if (startDate.value) {
-    const start = new Date(startDate.value)
-    filtered = filtered.filter(payment => new Date(payment.dop) >= start)
-  }
-
-  if (endDate.value) {
-    const end = new Date(endDate.value)
-    end.setHours(23, 59, 59, 999) // End of day
-    filtered = filtered.filter(payment => new Date(payment.dop) <= end)
   }
 
   return filtered
@@ -318,13 +299,38 @@ const loadPayments = async () => {
   isLoading.value = true
 
   try {
-    const response = await api.get('/receipts/previous?limit=1000') // Load more payments
+    const params = new URLSearchParams()
+    params.append('limit', '1000')
+    if (classId.value) params.append('classId', classId.value)
+    if (term.value) params.append('term', term.value)
+    if (year.value) params.append('year', year.value.toString())
+    if (startDate.value) params.append('startDate', startDate.value)
+    if (endDate.value) params.append('endDate', endDate.value)
+
+    const response = await api.get(`/receipts/previous?${params.toString()}`)
     payments.value = response.data || []
   } catch (error) {
     console.error('Load payments error:', error)
     payments.value = []
   } finally {
     isLoading.value = false
+  }
+}
+
+const loadInitialData = async () => {
+  try {
+    const schoolRes = await api.get<any>('/school/info')
+    if (schoolRes.success && schoolRes.data) {
+      term.value = schoolRes.data.term || ''
+      year.value = schoolRes.data.year || new Date().getFullYear()
+    }
+    
+    const res = await api.get<any>('/charges/defaults')
+    if (res.success && res.data && res.data.classes) {
+      classes.value = res.data.classes
+    }
+  } catch (e) {
+    console.error('Failed to load initial data', e)
   }
 }
 
@@ -339,10 +345,14 @@ const loadPrintConfig = async () => {
 
 const clearFilters = () => {
   searchQuery.value = ''
+  classId.value = ''
+  term.value = ''
+  year.value = ''
   startDate.value = ''
   endDate.value = ''
   selectedPayments.value = []
   selectAll.value = false
+  loadPayments()
 }
 
 const toggleSelectAll = () => {
@@ -439,9 +449,8 @@ watch(() => filteredPayments.value.length, () => {
 
 // Lifecycle
 onMounted(async () => {
-  await Promise.all([
-    loadPayments(),
-    loadPrintConfig()
-  ])
+  await loadInitialData()
+  await loadPayments()
+  await loadPrintConfig()
 })
 </script>

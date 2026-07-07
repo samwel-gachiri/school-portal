@@ -112,8 +112,16 @@ class ReceiptController {
   async getPreviousReceipts(req: Request, res: Response): Promise<void> {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      
+      const options = {
+        classId: req.query.classId as string,
+        term: req.query.term as string,
+        year: req.query.year as string,
+        startDate: req.query.startDate as string,
+        endDate: req.query.endDate as string
+      };
 
-      const receipts = await receiptService.getPreviousReceipts(limit);
+      const receipts = await receiptService.getPreviousReceipts(limit, options);
       res.json({
         success: true,
         data: receipts,
