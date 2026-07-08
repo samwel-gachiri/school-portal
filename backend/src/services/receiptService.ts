@@ -151,10 +151,12 @@ class ReceiptService {
         pt.ref, 
         s.section,
         st.class,
-        st.stream
+        st.stream,
+        p_status.printed as is_printed
       FROM payment pt
       JOIN student st ON pt.adm = st.adm
-      JOIN school s ON 1=1
+      LEFT JOIN (SELECT section FROM school LIMIT 1) s ON 1=1
+      LEFT JOIN printtable p_status ON pt.payment_id = p_status.receiptNO
       WHERE 1=1
     `;
 
@@ -209,9 +211,10 @@ class ReceiptService {
       JOIN class c on st.class = c.class_id
       LEFT JOIN stream s on st.stream = s.stream_id
       WHERE pt.payment_id IN (${placeholders})
+      ORDER BY FIELD(pt.payment_id, ${placeholders})
     `;
     
-    const receipts = await this.db.query(query, receiptNumbers);
+    const receipts = await this.db.query(query, [...receiptNumbers, ...receiptNumbers]);
     
     if (!receipts || (receipts as any[]).length === 0) return;
     
@@ -231,23 +234,32 @@ class ReceiptService {
         print_time=now(), 
         printed=VALUES(printed)
     `;
-    const values = (receipts as any[]).map((r: any) => [
-      r.name1 || '',
-      r.name2 || '',
-      r.name3 || '',
-      r.adm || 0,
-      r.receiptNO || 0,
-      r.class ? r.class.toString() : '',
-      r.stream ? r.stream.toString() : '',
-      r.dop ? new Date(r.dop).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
-      r.term || '',
-      r.year || new Date().getFullYear(),
-      r.amount?.toString() || '0',
-      r.balance?.toString() || '0',
-      r.item || '',
-      new Date(),
-      'no'
-    ]);
+    const baseTime = new Date();
+
+    const values = (receipts as any[]).map((r, index) => {
+      const printTime = new Date(baseTime.getTime() + index * 1000)
+        .toISOString()
+        .slice(0, 19)
+        .replace('T', ' ');
+
+      return [
+        r.name1 || '',
+        r.name2 || '',
+        r.name3 || '',
+        r.adm || 0,
+        r.receiptNO || 0,
+        r.class ? r.class.toString() : '',
+        r.stream ? r.stream.toString() : '',
+        r.dop ? new Date(r.dop).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        r.term || '',
+        r.year || new Date().getFullYear(),
+        r.amount?.toString() || '0',
+        r.balance?.toString() || '0',
+        r.item || '',
+        printTime,
+        'no'
+      ];
+    });
 
     for (const val of values) {
       await this.db.query(insertQuery, val);

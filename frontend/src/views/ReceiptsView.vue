@@ -113,12 +113,17 @@
                 :class="{ 'bg-blue-50': isSelected(payment.payment_id) }"
               >
                 <td class="table-cell">
-                  <input
-                    type="checkbox"
-                    :value="payment.payment_id"
-                    v-model="selectedPayments"
-                    class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                  />
+                  <div class="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      :checked="isSelected(payment.payment_id)"
+                      @change="toggleSelection(payment.payment_id)"
+                      class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                    />
+                    <span v-if="isSelected(payment.payment_id)" class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-primary-100 text-primary-700">
+                      {{ selectedPayments.indexOf(payment.payment_id) + 1 }}
+                    </span>
+                  </div>
                 </td>
                 <td class="table-cell">
                   <div class="text-sm text-gray-900">
@@ -156,8 +161,11 @@
                 </td>
 
                 <td class="table-cell">
-                  <div class="text-sm text-gray-900 font-mono">
-                    {{ payment.ref }}
+                  <div class="text-sm text-gray-900 font-mono flex items-center space-x-2">
+                    <span>{{ payment.ref }}</span>
+                    <span v-if="payment.is_printed === 'yes'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                      Printed
+                    </span>
                   </div>
                 </td>
 
@@ -237,6 +245,7 @@ interface Receipt {
   bank: string
   ref: string
   section?: string
+  is_printed?: string
 }
 
 // State
@@ -360,6 +369,15 @@ const toggleSelectAll = () => {
     selectedPayments.value = filteredPayments.value.map(p => p.payment_id)
   } else {
     selectedPayments.value = []
+  }
+}
+
+const toggleSelection = (paymentId: number) => {
+  const index = selectedPayments.value.indexOf(paymentId)
+  if (index === -1) {
+    selectedPayments.value.push(paymentId)
+  } else {
+    selectedPayments.value.splice(index, 1)
   }
 }
 

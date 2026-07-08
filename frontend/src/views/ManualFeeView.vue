@@ -15,12 +15,13 @@
             </label>
             <input
               id="search"
+              ref="searchInput"
               v-model="searchQuery"
               type="text"
               placeholder="Enter admission number or student name..."
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               @input="handleSearch"
-              @focus="showDropdown = true"
+              @focus="showDropdown = true; $event.target.select()"
               @blur="hideDropdown"
             />
             
@@ -136,6 +137,7 @@
                 </label>
                 <select
                   id="bank"
+                  ref="bankInput"
                   v-model="paymentForm.bank"
                   required
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -159,6 +161,7 @@
                 </label>
                 <input
                   id="reference"
+                  ref="refInput"
                   v-model="paymentForm.ref"
                   type="text"
                   :required="!isAdminUser"
@@ -166,6 +169,7 @@
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   :class="{ 'border-red-300': referenceError }"
                   @input="handleReferenceInput"
+                  @keyup.enter="dateInput?.focus()"
                 />
                 <!-- <div v-if="referenceError" class="mt-1 text-sm text-red-600">
                   {{ referenceError }}
@@ -182,11 +186,13 @@
                 </label>
                 <input
                   id="date"
+                  ref="dateInput"
                   v-model="paymentForm.date"
                   type="date"
                   required
                   :max="today"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  @keyup.enter="amountInput?.focus()"
                 />
               </div>
 
@@ -197,6 +203,7 @@
                 </label>
                 <input
                   id="amount"
+                  ref="amountInput"
                   v-model="paymentForm.amount"
                   type="number"
                   step="0.01"
@@ -370,6 +377,12 @@ const showDropdown = ref(false)
 const searchResults = ref<Student[]>([])
 const isSearching = ref(false)
 
+const searchInput = ref<HTMLInputElement | null>(null)
+const bankInput = ref<HTMLSelectElement | null>(null)
+const refInput = ref<HTMLInputElement | null>(null)
+const dateInput = ref<HTMLInputElement | null>(null)
+const amountInput = ref<HTMLInputElement | null>(null)
+
 const paymentForm = ref({
   bank: '',
   ref: '',
@@ -471,6 +484,10 @@ const selectStudent = async (student: Student) => {
       selectedStudent.value = response.data.student
       paymentHistory.value = response.data.paymentHistory
       searchQuery.value = `${student.adm} - ${response.data.student.name1} ${response.data.student.name2} ${response.data.student.name3 || ''}`.trim()
+      
+      setTimeout(() => {
+        bankInput.value?.focus()
+      }, 50)
     }
   } catch (error) {
     console.error('Failed to get student details:', error)
@@ -502,6 +519,12 @@ const handleBankChange = () => {
   // Clear any pending validation timeout
   if (searchTimeout) {
     clearTimeout(searchTimeout)
+  }
+  
+  if (paymentForm.value.bank) {
+    setTimeout(() => {
+      refInput.value?.focus()
+    }, 50)
   }
 }
 
@@ -587,8 +610,26 @@ const submitPayment = async () => {
       // Update student balance
       selectedStudent.value.balance = response.data.newBalance
       
-      // Clear form
-      clearForm()
+      // Update local history
+      const bankName = bankTypes.value.find(b => b.id === paymentForm.value.bank)?.name || paymentForm.value.bank;
+      paymentHistory.value.unshift({
+        id: response.data.id || Date.now(),
+        bank: bankName,
+        ref: paymentForm.value.ref,
+        amount: parseFloat(paymentForm.value.amount),
+        date: paymentForm.value.date,
+        balance: response.data.newBalance
+      })
+      
+      // Clear ONLY payment form so user can see history
+      paymentForm.value = {
+        bank: '',
+        ref: '',
+        date: new Date().toISOString().split('T')[0],
+        amount: ''
+      }
+      referenceError.value = ''
+      duplicateWarning.value = ''
     }
   } catch (error: any) {
     console.error('Payment submission failed:', error)
@@ -608,6 +649,12 @@ const clearForm = () => {
   }
   referenceError.value = ''
   duplicateWarning.value = ''
+  selectedStudent.value = null
+  paymentHistory.value = []
+  searchQuery.value = ''
+  setTimeout(() => {
+    searchInput.value?.focus()
+  }, 50)
 }
 
 const closeSuccessModal = () => {
