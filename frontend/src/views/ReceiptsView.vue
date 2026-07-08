@@ -330,7 +330,7 @@ const loadInitialData = async () => {
   try {
     const schoolRes = await api.get<any>('/school/info')
     if (schoolRes.success && schoolRes.data) {
-      term.value = schoolRes.data.term || ''
+      term.value = '' // Default to all terms
       year.value = schoolRes.data.year || new Date().getFullYear()
     }
     

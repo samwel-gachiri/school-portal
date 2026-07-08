@@ -156,7 +156,7 @@ class ReceiptService {
       FROM payment pt
       JOIN student st ON pt.adm = st.adm
       LEFT JOIN (SELECT section FROM school LIMIT 1) s ON 1=1
-      LEFT JOIN printtable p_status ON pt.payment_id = p_status.receiptNO
+      LEFT JOIN (SELECT receiptNO, MAX(printed) as printed FROM printtable GROUP BY receiptNO) p_status ON pt.payment_id = p_status.receiptNO
       WHERE 1=1
     `;
 
