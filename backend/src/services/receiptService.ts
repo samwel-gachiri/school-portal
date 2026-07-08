@@ -138,7 +138,7 @@ class ReceiptService {
     options: { classId?: string; term?: string; year?: string; startDate?: string; endDate?: string } = {}
   ): Promise<ReceiptData[]> {
     let query = `
-      SELECT 
+      SELECT DISTINCT
         CONCAT_WS(' ', st.name1, st.name2, st.name3) as name,
         pt.adm, 
         pt.payment_id, 
