@@ -34,6 +34,8 @@ export const manualFeeService = {
     SIM_PAY: { length: 10, allowLetters: false },
   },
 
+  processingRefs: new Set<string>(),
+
   ADMIN_USERS: ["peter", "jane", "admin"],
 
   async searchStudents(query: string) {
@@ -236,8 +238,17 @@ export const manualFeeService = {
   ): Promise<any> {
     const db = DatabaseConnection.getInstance();
 
-    // Get student details
-    const student = await this.getStudentDetails(paymentData.adm);
+    const refKey = paymentData.ref ? `${paymentData.bank}-${paymentData.ref}` : null;
+    if (refKey && paymentData.bank !== "CHEQUE") {
+      if (this.processingRefs.has(refKey)) {
+        throw new Error("Payment with this reference is already being processed");
+      }
+      this.processingRefs.add(refKey);
+    }
+
+    try {
+      // Get student details
+      const student = await this.getStudentDetails(paymentData.adm);
 
     // Validate reference if provided
     if (paymentData.ref) {
@@ -410,6 +421,13 @@ export const manualFeeService = {
     } catch (error) {
       await db.queryRaw("ROLLBACK");
       throw error;
+    }
+    
+    } finally {
+      const refKey = paymentData.ref ? `${paymentData.bank}-${paymentData.ref}` : null;
+      if (refKey && paymentData.bank !== "CHEQUE") {
+        this.processingRefs.delete(refKey);
+      }
     }
   },
 
