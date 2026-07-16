@@ -82,7 +82,7 @@
                     <td>KSh {{ formatAmount(receipt?.amount || 0) }}</td>
                   </tr>
                   <tr class="balance-row">
-                    <td>{{ (receipt?.balance || 0) > 0 ? 'Balance' : 'Overpay' }}</td>
+                    <td>{{ (receipt?.balance || 0) < 0 ? 'Overpay' : 'Balance' }}</td>
                     <td>KSh {{ formatAmount(Math.abs(receipt?.balance || 0)) }}</td>
                   </tr>
                 </tbody>
@@ -267,7 +267,7 @@ const generateReceiptHtml = (): string => {
               <td>KSh ${formatAmount(receipt?.amount || 0)}</td>
             </tr>
             <tr class="balance-row">
-              <td>${(receipt?.balance || 0) > 0 ? 'Balance' : 'Overpay'}</td>
+              <td>${(receipt?.balance || 0) < 0 ? 'Overpay' : 'Balance'}</td>
               <td>KSh ${formatAmount(Math.abs(receipt?.balance || 0))}</td>
             </tr>
           </tbody>

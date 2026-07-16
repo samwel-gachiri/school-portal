@@ -328,7 +328,7 @@ export const manualFeeService = {
           newBalance,
           term,
           year,
-          paymentData.processedBy,
+          'SCHOOL_FEES',
         ]
       );
 
