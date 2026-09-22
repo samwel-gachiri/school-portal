@@ -115,7 +115,6 @@ export const manualFeeService = {
       FROM payment p
       WHERE p.adm = ?
       ORDER BY p.date_ass DESC
-      LIMIT 10
     `,
       [adm]
     );
