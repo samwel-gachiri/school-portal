@@ -25,7 +25,7 @@ interface ValidationResult {
 export const manualFeeService = {
   // Bank reference validation rules
   BANK_RULES: {
-    EQUITY: { length: 12, allowLetters: false },
+    EQUITY: { length: 12, allowLetters: true },
     EQUITY_DIRECT: { length: 10, allowLetters: true },
     KCB: { length: 12, allowLetters: false },
     CHEQUE: { length: 6, allowLetters: true },
@@ -114,7 +114,7 @@ export const manualFeeService = {
         p.date_ass as created_at
       FROM payment p
       WHERE p.adm = ?
-      ORDER BY p.date_ass DESC
+      ORDER BY p.date_ass ASC
     `,
       [adm]
     );

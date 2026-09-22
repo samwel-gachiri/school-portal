@@ -102,7 +102,7 @@
           <!-- Payment History -->
           <div v-if="paymentHistory.length > 0" class="mt-4">
             <h4 class="text-sm font-medium text-blue-900 mb-2">Recent Payments</h4>
-            <div class="max-h-32 overflow-y-auto">
+            <div class="max-h-64 overflow-y-auto">
               <table class="min-w-full text-xs">
                 <thead class="bg-blue-100">
                   <tr>
@@ -113,7 +113,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="payment in paymentHistory.slice(0, 5)" :key="payment.id" class="border-b border-blue-100">
+                  <tr v-for="payment in paymentHistory" :key="payment.id" class="border-b border-blue-100">
                     <td class="px-2 py-1">{{ formatDate(payment.date) }}</td>
                     <td class="px-2 py-1">{{ payment.bank }}</td>
                     <td class="px-2 py-1">{{ payment.ref || '-' }}</td>
@@ -537,7 +537,7 @@ const getReferencePlaceholder = () => {
   if (!paymentForm.value.bank) return 'Select bank first'
   
   const formats: Record<string, string> = {
-    EQUITY: '123456789012',
+    EQUITY: 'KEahu655u1YD',
     KCB: '123456789012', 
     CHEQUE: 'ABC123',
     NCBA: '1234567890123',
