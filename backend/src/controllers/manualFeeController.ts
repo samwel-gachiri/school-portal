@@ -201,4 +201,117 @@ export const manualFeeController = {
       });
     }
   },
+
+  async updatePayment(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { paymentId } = req.params;
+      const { bank, ref, amount, date, reason } = req.body;
+      const userId = req.user?.user_id;
+      const username = req.user?.username;
+
+      const pId = parseInt(paymentId, 10);
+      if (isNaN(pId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid payment ID",
+        });
+      }
+
+      if (!bank || !amount || !date) {
+        return res.status(400).json({
+          success: false,
+          message: "Bank, amount, and date are required",
+        });
+      }
+
+      if (!reason || !String(reason).trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Reason for payment modification is required",
+        });
+      }
+
+      if (!userId || !username) {
+        return res.status(401).json({
+          success: false,
+          message: "User authentication required",
+        });
+      }
+
+      const paymentData = {
+        bank,
+        ref: ref || undefined,
+        amount: parseFloat(amount),
+        date,
+        reason: String(reason).trim(),
+        processedBy: userId,
+      };
+
+      const updated = await manualFeeService.updatePayment(
+        pId,
+        paymentData,
+        username
+      );
+
+      return res.json({
+        success: true,
+        data: updated,
+        message: "Payment updated successfully",
+      });
+    } catch (error) {
+      logger.error("Error updating payment:", error);
+      return res.status(400).json({
+        success: false,
+        message:
+          error instanceof Error ? error.message : "Failed to update payment",
+      });
+    }
+  },
+
+  async deletePayment(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { paymentId } = req.params;
+      const userId = req.user?.user_id;
+      const rawReason = (req.body?.reason || req.query?.reason || '') as string;
+      const reason = String(rawReason).trim();
+
+      const pId = parseInt(paymentId, 10);
+      if (isNaN(pId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid payment ID",
+        });
+      }
+
+      if (!reason) {
+        return res.status(400).json({
+          success: false,
+          message: "Reason for payment deletion is required",
+        });
+      }
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "User authentication required",
+        });
+      }
+
+      const username = req.user?.username || 'admin';
+      const result = await manualFeeService.deletePayment(pId, userId, username, reason);
+
+      return res.json({
+        success: true,
+        data: result,
+        message: "Payment deleted successfully",
+      });
+    } catch (error) {
+      logger.error("Error deleting payment:", error);
+      return res.status(400).json({
+        success: false,
+        message:
+          error instanceof Error ? error.message : "Failed to delete payment",
+      });
+    }
+  },
 };

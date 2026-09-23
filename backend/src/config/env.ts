@@ -48,6 +48,14 @@ export const config = {
     merchantCode: process.env.JENGA_MERCHANT_CODE || '',
     accountNumber: process.env.JENGA_ACCOUNT_NUMBER || '',
   },
+  sms: {
+    endpoint: process.env.SMS_API_ENDPOINT || 'https://sms.textsms.co.ke/api/services/sendsms/',
+    apiKey: process.env.SMS_API_KEY || '',
+    partnerId: process.env.SMS_PARTNER_ID || '',
+    shortcode: process.env.SMS_SHORTCODE || '',
+    recipientMobile: process.env.SMS_ALERT_RECIPIENT_MOBILE || '',
+    enabled: process.env.SMS_ALERTS_ENABLED !== 'false',
+  },
 };
 
 // Validate required environment variables

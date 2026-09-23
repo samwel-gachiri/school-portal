@@ -15,6 +15,8 @@ router.get("/students/search", manualFeeController.searchStudents);
 router.get("/students/:adm", manualFeeController.getStudentDetails);
 router.post("/validate-reference", manualFeeController.validateReference);
 router.post("/payments", manualFeeController.createPayment);
+router.put("/payments/:paymentId", manualFeeController.updatePayment);
+router.delete("/payments/:paymentId", manualFeeController.deletePayment);
 router.get("/bank-types", manualFeeController.getBankTypes);
 router.get("/check-duplicate", manualFeeController.checkDuplicatePayment);
 
@@ -23,6 +25,8 @@ console.log("✅ Manual fees routes configured:", {
   "GET /students/:adm": "getStudentDetails",
   "POST /validate-reference": "validateReference",
   "POST /payments": "createPayment",
+  "PUT /payments/:paymentId": "updatePayment",
+  "DELETE /payments/:paymentId": "deletePayment",
   "GET /bank-types": "getBankTypes",
   "GET /check-duplicate": "checkDuplicatePayment",
 });

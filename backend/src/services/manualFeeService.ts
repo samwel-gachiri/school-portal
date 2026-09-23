@@ -1,4 +1,6 @@
 import { DatabaseConnection } from "../config/database";
+import { smsService } from "./smsService";
+import logger from "../utils/logger";
 
 interface PaymentData {
   adm: number;
@@ -6,6 +8,15 @@ interface PaymentData {
   ref?: string;
   amount: number;
   date: string;
+  processedBy: number;
+}
+
+interface UpdatePaymentData {
+  bank: string;
+  ref?: string;
+  amount: number;
+  date: string;
+  reason?: string;
   processedBy: number;
 }
 
@@ -114,7 +125,7 @@ export const manualFeeService = {
         p.date_ass as created_at
       FROM payment p
       WHERE p.adm = ?
-      ORDER BY p.date_ass ASC
+      ORDER BY p.payment_id DESC
     `,
       [adm]
     );
@@ -170,6 +181,24 @@ export const manualFeeService = {
       WHERE bank = ? AND ref = ?
     `,
       [bank, ref]
+    );
+
+    return existing.length === 0;
+  },
+
+  async checkReferenceUniquenessForUpdate(
+    bank: string,
+    ref: string,
+    excludePaymentId: number
+  ): Promise<boolean> {
+    const db = DatabaseConnection.getInstance();
+
+    const existing = await db.query(
+      `
+      SELECT payment_id FROM payment 
+      WHERE bank = ? AND ref = ? AND payment_id != ?
+    `,
+      [bank, ref, excludePaymentId]
     );
 
     return existing.length === 0;
@@ -427,6 +456,323 @@ export const manualFeeService = {
       if (refKey && paymentData.bank !== "CHEQUE") {
         this.processingRefs.delete(refKey);
       }
+    }
+  },
+
+  async updatePayment(
+    paymentId: number,
+    paymentData: UpdatePaymentData,
+    username: string
+  ): Promise<any> {
+    const db = DatabaseConnection.getInstance();
+
+    const existingPayments = await db.query(
+      `SELECT * FROM payment WHERE payment_id = ?`,
+      [paymentId]
+    );
+    if (!existingPayments || existingPayments.length === 0) {
+      throw new Error("Payment not found");
+    }
+    const currentPayment = existingPayments[0];
+
+    const student = await this.getStudentDetails(currentPayment.adm);
+
+    if (paymentData.ref) {
+      const refValidation = this.validateReference(
+        paymentData.bank,
+        paymentData.ref
+      );
+      if (!refValidation.valid) {
+        throw new Error(refValidation.errors.join(", "));
+      }
+
+      if (paymentData.bank !== "CHEQUE") {
+        const isUnique = await this.checkReferenceUniquenessForUpdate(
+          paymentData.bank,
+          paymentData.ref,
+          paymentId
+        );
+        if (!isUnique) {
+          throw new Error("Reference number already exists for another payment");
+        }
+      }
+    } else {
+      const isAdmin = await this.isAdminUser(username);
+      if (!isAdmin) {
+        throw new Error(
+          "Only admin users can create or modify payments without reference number"
+        );
+      }
+    }
+
+    const dateValidation = this.validateDate(paymentData.date);
+    if (!dateValidation.valid) {
+      throw new Error(dateValidation.errors.join(", "));
+    }
+
+    if (paymentData.amount <= 0) {
+      throw new Error("Payment amount must be positive");
+    }
+
+    const amountDiff = paymentData.amount - Number(currentPayment.amount);
+    const newStudentBalance = Number(student.balance) - amountDiff;
+
+    const newRefKey = paymentData.ref ? `${paymentData.bank}-${paymentData.ref}` : null;
+    if (newRefKey && paymentData.bank !== "CHEQUE") {
+      if (this.processingRefs.has(newRefKey)) {
+        throw new Error("Payment with this reference is already being processed");
+      }
+      this.processingRefs.add(newRefKey);
+    }
+
+    try {
+      await db.queryRaw("START TRANSACTION");
+
+      // Update student balance
+      await db.query(
+        `
+        UPDATE student 
+        SET balance = ? 
+        WHERE adm = ?
+      `,
+        [newStudentBalance, currentPayment.adm]
+      );
+
+      // Update class balance
+      await db.query(
+        `
+        UPDATE class 
+        SET balance = balance - ? 
+        WHERE class_id = ?
+      `,
+        [amountDiff, student.class]
+      );
+
+      // Update payment record
+      await db.query(
+        `
+        UPDATE payment 
+        SET bank = ?, ref = ?, amount = ?, dop = ?, balance = balance - ?
+        WHERE payment_id = ?
+      `,
+        [
+          paymentData.bank,
+          paymentData.ref || null,
+          paymentData.amount,
+          paymentData.date,
+          amountDiff,
+          paymentId,
+        ]
+      );
+
+      // Update paycount record
+      await db.query(
+        `
+        UPDATE paycount 
+        SET bank = ?, ref = ?, amount = ?, dop = ?, balance = balance - ?
+        WHERE payment = ?
+      `,
+        [
+          paymentData.bank,
+          paymentData.ref || null,
+          paymentData.amount,
+          paymentData.date,
+          amountDiff,
+          paymentId,
+        ]
+      );
+
+      // Log the transaction
+      await db.query(
+        `
+        INSERT INTO processing_log (user_id, action_type, details)
+        VALUES (?, ?, ?)
+      `,
+        [
+          paymentData.processedBy,
+          "update",
+          JSON.stringify({
+            payment_id: paymentId,
+            adm: currentPayment.adm,
+            old: {
+              amount: currentPayment.amount,
+              bank: currentPayment.bank,
+              ref: currentPayment.ref,
+              date: currentPayment.dop,
+            },
+            new: {
+              amount: paymentData.amount,
+              bank: paymentData.bank,
+              ref: paymentData.ref,
+              date: paymentData.date,
+            },
+            amountDiff,
+            newBalance: newStudentBalance,
+            reason: paymentData.reason || null,
+          }),
+        ]
+      );
+
+      await db.queryRaw("COMMIT");
+
+      // Dispatch SMS alert asynchronously (non-blocking)
+      smsService
+        .notifyPaymentModified({
+          paymentId,
+          adm: currentPayment.adm,
+          studentName: `${student.name1} ${student.name2} ${student.name3 || ''}`.trim(),
+          username,
+          reason: paymentData.reason,
+          oldAmount: Number(currentPayment.amount),
+          newAmount: Number(paymentData.amount),
+          bank: paymentData.bank,
+          ref: paymentData.ref,
+          date: paymentData.date,
+          newBalance: newStudentBalance,
+        })
+        .catch((smsErr) => {
+          logger.error(`Error sending payment modified SMS alert: ${smsErr.message || smsErr}`);
+        });
+
+      return {
+        id: paymentId,
+        adm: currentPayment.adm,
+        studentName: `${student.name1} ${student.name2} ${student.name3 || ''}`.trim(),
+        amount: paymentData.amount,
+        bank: paymentData.bank,
+        ref: paymentData.ref,
+        date: paymentData.date,
+        previousBalance: student.balance,
+        newBalance: newStudentBalance,
+      };
+    } catch (error) {
+      await db.queryRaw("ROLLBACK");
+      throw error;
+    } finally {
+      if (newRefKey && paymentData.bank !== "CHEQUE") {
+        this.processingRefs.delete(newRefKey);
+      }
+    }
+  },
+
+  async deletePayment(
+    paymentId: number,
+    userId: number,
+    username: string = 'admin',
+    reason?: string
+  ): Promise<any> {
+    const db = DatabaseConnection.getInstance();
+
+    const existingPayments = await db.query(
+      `SELECT * FROM payment WHERE payment_id = ?`,
+      [paymentId]
+    );
+    if (!existingPayments || existingPayments.length === 0) {
+      throw new Error("Payment not found");
+    }
+    const payment = existingPayments[0];
+
+    const student = await this.getStudentDetails(payment.adm);
+    const reversedBalance = Number(student.balance) + Number(payment.amount);
+
+    await db.queryRaw("START TRANSACTION");
+
+    try {
+      // 1. Restore student balance and decrement paycount
+      await db.query(
+        `
+        UPDATE student 
+        SET balance = ?, paycount = GREATEST(0, paycount - 1) 
+        WHERE adm = ?
+      `,
+        [reversedBalance, payment.adm]
+      );
+
+      // 2. Restore class balance
+      await db.query(
+        `
+        UPDATE class 
+        SET balance = balance + ? 
+        WHERE class_id = ?
+      `,
+        [payment.amount, student.class]
+      );
+
+      // 3. Remove paycount record
+      await db.query(
+        `DELETE FROM paycount WHERE payment = ?`,
+        [paymentId]
+      );
+
+      // 4. Remove any print receipt records for this payment
+      try {
+        await db.query(
+          `DELETE FROM printtable WHERE receiptNO = ?`,
+          [paymentId]
+        );
+      } catch (e) {
+        // Continue even if printtable doesn't have receiptNO or is missing
+      }
+
+      // 5. Delete payment record
+      await db.query(
+        `DELETE FROM payment WHERE payment_id = ?`,
+        [paymentId]
+      );
+
+      // 6. Log the deletion
+      await db.query(
+        `
+        INSERT INTO processing_log (user_id, action_type, details)
+        VALUES (?, ?, ?)
+      `,
+        [
+          userId,
+          "update",
+          JSON.stringify({
+            action: "delete",
+            payment_id: paymentId,
+            adm: payment.adm,
+            amount: payment.amount,
+            bank: payment.bank,
+            ref: payment.ref,
+            date: payment.dop,
+            reversedBalance: reversedBalance,
+            reason: reason || null,
+          }),
+        ]
+      );
+
+      await db.queryRaw("COMMIT");
+
+      // Dispatch SMS alert asynchronously (non-blocking)
+      smsService
+        .notifyPaymentDeleted({
+          paymentId,
+          adm: payment.adm,
+          studentName: `${student.name1} ${student.name2} ${student.name3 || ''}`.trim(),
+          username,
+          reason,
+          amount: Number(payment.amount),
+          bank: payment.bank,
+          ref: payment.ref,
+          date: payment.dop,
+          newBalance: reversedBalance,
+        })
+        .catch((smsErr) => {
+          logger.error(`Error sending payment deleted SMS alert: ${smsErr.message || smsErr}`);
+        });
+
+      return {
+        id: paymentId,
+        adm: payment.adm,
+        deletedAmount: payment.amount,
+        previousBalance: student.balance,
+        newBalance: reversedBalance,
+      };
+    } catch (error) {
+      await db.queryRaw("ROLLBACK");
+      throw error;
     }
   },
 

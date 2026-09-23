@@ -93,9 +93,9 @@ class ApiService {
     }
   }
 
-  async delete<T>(url: string): Promise<ApiResponse<T>> {
+  async delete<T>(url: string, config?: any): Promise<ApiResponse<T>> {
     try {
-      const response = await this.api.delete(url)
+      const response = await this.api.delete(url, config)
       return this.handleResponse<T>(response)
     } catch (error) {
       return this.handleError(error)
@@ -181,6 +181,17 @@ export const manualFeesApi = {
   
   createPayment: (paymentData: any) =>
     apiService.post('/manual-fees/payments', paymentData),
+  
+  updatePayment: (paymentId: number, paymentData: any) =>
+    apiService.put(`/manual-fees/payments/${paymentId}`, paymentData),
+
+  deletePayment: (paymentId: number, data?: { reason?: string }) => {
+    const reasonParam = data?.reason ? `?reason=${encodeURIComponent(data.reason)}` : ''
+    return apiService.delete(`/manual-fees/payments/${paymentId}${reasonParam}`, {
+      params: data?.reason ? { reason: data.reason } : undefined,
+      data: data
+    })
+  },
   
   getBankTypes: () =>
     apiService.get('/manual-fees/bank-types'),

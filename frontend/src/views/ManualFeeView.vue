@@ -100,24 +100,36 @@
           </div>
 
           <!-- Payment History -->
-          <div v-if="paymentHistory.length > 0" class="mt-4">
+          <div v-if="sortedPaymentHistory.length > 0" class="mt-4">
             <h4 class="text-sm font-medium text-blue-900 mb-2">Recent Payments</h4>
-            <div class="max-h-64 overflow-y-auto">
+            <div class="max-h-64 overflow-y-auto border border-blue-200 rounded-md">
               <table class="min-w-full text-xs">
-                <thead class="bg-blue-100">
+                <thead class="bg-blue-100 text-blue-900">
                   <tr>
-                    <th class="px-2 py-1 text-left">Date</th>
-                    <th class="px-2 py-1 text-left">Bank</th>
-                    <th class="px-2 py-1 text-left">Reference</th>
-                    <th class="px-2 py-1 text-right">Amount</th>
+                    <th class="px-2 py-1.5 text-left font-semibold"># ID</th>
+                    <th class="px-2 py-1.5 text-left font-semibold">Date</th>
+                    <th class="px-2 py-1.5 text-left font-semibold">Bank</th>
+                    <th class="px-2 py-1.5 text-left font-semibold">Reference</th>
+                    <th class="px-2 py-1.5 text-right font-semibold">Amount</th>
+                    <th class="px-2 py-1.5 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="payment in paymentHistory" :key="payment.id" class="border-b border-blue-100">
+                  <tr v-for="payment in sortedPaymentHistory" :key="payment.id" class="border-b border-blue-100 hover:bg-blue-50/50">
+                    <td class="px-2 py-1 font-mono font-bold text-blue-900">{{ payment.id }}</td>
                     <td class="px-2 py-1">{{ formatDate(payment.date) }}</td>
                     <td class="px-2 py-1">{{ payment.bank }}</td>
                     <td class="px-2 py-1">{{ payment.ref || '-' }}</td>
-                    <td class="px-2 py-1 text-right">{{ formatAmount(payment.amount) }}</td>
+                    <td class="px-2 py-1 text-right font-medium">{{ formatAmount(payment.amount) }}</td>
+                    <td class="px-2 py-1 text-right whitespace-nowrap">
+                      <button 
+                        type="button" 
+                        @click="openEditPaymentModal(payment)" 
+                        class="text-blue-600 hover:text-blue-800 font-medium px-2 py-0.5 rounded hover:bg-blue-100 border border-blue-300 transition-colors"
+                      >
+                        Edit
+                      </button>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -322,14 +334,104 @@
           </div>
         </div>
       </div>
+      <!-- Edit Payment Modal -->
+      <div v-if="showEditPaymentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+          <div class="text-left">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Edit Payment</h3>
+            <p class="text-xs text-gray-500 mb-4">Update payment information, bank, reference, or amount.</p>
+            <form @submit.prevent="submitEditPayment" class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Bank *</label>
+                <select v-model="editPaymentForm.bank" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                  <option v-for="bank in bankTypes" :key="bank.id" :value="bank.id">
+                    {{ bank.name }} ({{ bank.format }})
+                  </option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Reference Number</label>
+                <input type="text" v-model="editPaymentForm.ref" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Reference code">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Amount (KSh) *</label>
+                <input type="number" v-model.number="editPaymentForm.amount" min="1" step="any" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Payment Date *</label>
+                <input type="date" v-model="editPaymentForm.date" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Reason for Modification *</label>
+                <input type="text" v-model="editPaymentForm.reason" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="e.g. Corrected amount / reference">
+              </div>
+              <div class="flex space-x-2 pt-2">
+                <button type="submit" :disabled="submittingPaymentEdit" class="flex-1 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:bg-gray-400">
+                  {{ submittingPaymentEdit ? 'Saving...' : 'Save Changes' }}
+                </button>
+                <button type="button" @click="handleDeleteFromEditModal" :disabled="submittingPaymentEdit" class="px-3 py-2 bg-red-50 text-red-700 border border-red-300 text-sm font-medium rounded-md hover:bg-red-100">
+                  Delete
+                </button>
+                <button type="button" @click="showEditPaymentModal = false" :disabled="submittingPaymentEdit" class="px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Delete Payment Modal -->
+      <div v-if="showDeletePaymentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+          <div class="sm:flex sm:items-start">
+            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+              <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+              <h3 class="text-lg font-semibold text-gray-900">Delete Payment</h3>
+              <div class="mt-2 text-sm text-gray-600">
+                <p>Are you sure you want to delete payment of <strong class="text-red-600">KSh {{ formatAmount(paymentToDelete?.amount || 0) }}</strong>?</p>
+                <p v-if="paymentToDelete?.ref" class="text-xs text-gray-500 mt-1">Ref: <span class="font-mono">{{ paymentToDelete.ref }}</span> ({{ paymentToDelete.bank }})</p>
+                <div class="mt-3">
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Reason for Deletion *</label>
+                  <textarea 
+                    v-model="deletePaymentReason" 
+                    rows="2" 
+                    required 
+                    class="w-full px-2.5 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-sm" 
+                    placeholder="e.g. Duplicate payment / entered twice"
+                  ></textarea>
+                </div>
+                <div class="bg-amber-50 text-amber-800 text-xs p-2.5 rounded border border-amber-200 mt-3 leading-relaxed">
+                  ⚠️ Deleting this payment will reverse it and restore KSh {{ formatAmount(paymentToDelete?.amount || 0) }} to the student's outstanding balance.
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mt-5 flex space-x-3 sm:flex-row-reverse sm:space-x-reverse">
+            <button type="button" @click="executeDeletePayment" :disabled="deletingPayment" class="w-full sm:w-auto px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 disabled:bg-red-400">
+              {{ deletingPayment ? 'Deleting...' : 'Confirm Delete' }}
+            </button>
+            <button type="button" @click="showDeletePaymentModal = false" :disabled="deletingPayment" class="w-full sm:w-auto px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import api from '@/services/api'
+import { useToast } from 'vue-toastification'
+import api, { manualFeesApi } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
+
+const toast = useToast()
 
 interface Student {
   adm: number
@@ -365,9 +467,13 @@ let searchTimeout: NodeJS.Timeout | null = null
 const searchQuery = ref('')
 const selectedStudent = ref<Student | null>(null)
 const paymentHistory = ref<PaymentHistory[]>([])
+const sortedPaymentHistory = computed(() => {
+  return [...paymentHistory.value].sort((a, b) => Number(b.id) - Number(a.id))
+})
 const bankTypes = ref<BankType[]>([])
 const submitting = ref(false)
 const showSuccessModal = ref(false)
+const successMessage = ref('Payment recorded successfully')
 const showErrorModal = ref(false)
 const errorMessage = ref('')
 const lastPayment = ref<any>(null)
@@ -376,6 +482,23 @@ const duplicateWarning = ref('')
 const showDropdown = ref(false)
 const searchResults = ref<Student[]>([])
 const isSearching = ref(false)
+
+const showEditPaymentModal = ref(false)
+const submittingPaymentEdit = ref(false)
+const editingPaymentId = ref<number | null>(null)
+const editPaymentForm = ref({
+  bank: '',
+  ref: '',
+  amount: 0,
+  date: '',
+  reason: ''
+})
+
+const showDeletePaymentModal = ref(false)
+const deletingPayment = ref(false)
+const deletePaymentReason = ref('')
+const paymentToDelete = ref<PaymentHistory | null>(null)
+const currentEditingPayment = ref<PaymentHistory | null>(null)
 
 const searchInput = ref<HTMLInputElement | null>(null)
 const bankInput = ref<HTMLSelectElement | null>(null)
@@ -676,5 +799,98 @@ const formatAmount = (amount: number) => {
 
 const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleDateString('en-KE')
+}
+
+const openEditPaymentModal = (payment: PaymentHistory) => {
+  currentEditingPayment.value = payment
+  editingPaymentId.value = payment.id
+  let formattedDate = ''
+  if (payment.date) {
+    try {
+      formattedDate = new Date(payment.date).toISOString().split('T')[0]
+    } catch {
+      formattedDate = payment.date
+    }
+  } else {
+    formattedDate = new Date().toISOString().split('T')[0]
+  }
+
+  editPaymentForm.value = {
+    bank: payment.bank,
+    ref: payment.ref || '',
+    amount: payment.amount,
+    date: formattedDate,
+    reason: ''
+  }
+  showEditPaymentModal.value = true
+}
+
+const handleDeleteFromEditModal = () => {
+  if (!currentEditingPayment.value) return
+  showEditPaymentModal.value = false
+  confirmDeletePayment(currentEditingPayment.value)
+}
+
+const submitEditPayment = async () => {
+  if (!editingPaymentId.value || !selectedStudent.value) return
+  if (!editPaymentForm.value.reason?.trim()) {
+    toast.warning('Please provide a reason for the modification')
+    return
+  }
+  submittingPaymentEdit.value = true
+  try {
+    const payload = {
+      bank: editPaymentForm.value.bank,
+      ref: editPaymentForm.value.ref?.trim() || undefined,
+      amount: Number(editPaymentForm.value.amount),
+      date: editPaymentForm.value.date,
+      reason: editPaymentForm.value.reason.trim()
+    }
+    const res = await manualFeesApi.updatePayment(editingPaymentId.value, payload)
+    if (res.success) {
+      showEditPaymentModal.value = false
+      toast.success('Payment updated successfully!')
+      // Refresh student details & payment history
+      await selectStudent(selectedStudent.value)
+    }
+  } catch (error: any) {
+    const msg = error.response?.data?.message || error.message || 'Failed to update payment'
+    toast.error(msg)
+  } finally {
+    submittingPaymentEdit.value = false
+  }
+}
+
+const confirmDeletePayment = (payment: PaymentHistory) => {
+  paymentToDelete.value = payment
+  deletePaymentReason.value = ''
+  showDeletePaymentModal.value = true
+}
+
+const executeDeletePayment = async () => {
+  if (!paymentToDelete.value || !selectedStudent.value) return
+  if (!deletePaymentReason.value?.trim()) {
+    toast.warning('Please provide a reason for deleting this payment')
+    return
+  }
+  deletingPayment.value = true
+  try {
+    const res = await manualFeesApi.deletePayment(paymentToDelete.value.id, {
+      reason: deletePaymentReason.value.trim()
+    })
+    if (res.success) {
+      showDeletePaymentModal.value = false
+      paymentToDelete.value = null
+      deletePaymentReason.value = ''
+      toast.success('Payment deleted successfully and balance restored!')
+      // Refresh student details & payment history
+      await selectStudent(selectedStudent.value)
+    }
+  } catch (error: any) {
+    const msg = error.response?.data?.message || error.message || 'Failed to delete payment'
+    toast.error(msg)
+  } finally {
+    deletingPayment.value = false
+  }
 }
 </script>
