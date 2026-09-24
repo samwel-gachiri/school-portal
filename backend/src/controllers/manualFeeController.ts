@@ -314,4 +314,28 @@ export const manualFeeController = {
       });
     }
   },
+
+  async recalculateBalances(req: AuthenticatedRequest, res: Response) {
+    try {
+      const rawAdm = req.body?.adm || req.query?.adm;
+      const adm = rawAdm ? parseInt(String(rawAdm), 10) : undefined;
+
+      const newBalance = await manualFeeService.recalculateStudentBalance(adm);
+
+      return res.json({
+        success: true,
+        message: adm
+          ? `Balance recalculated successfully for student #${adm}`
+          : "All student balances recalculated successfully",
+        data: adm ? { adm, newBalance } : undefined,
+      });
+    } catch (error) {
+      logger.error("Error recalculating balances:", error);
+      return res.status(500).json({
+        success: false,
+        message:
+          error instanceof Error ? error.message : "Failed to recalculate balances",
+      });
+    }
+  },
 };

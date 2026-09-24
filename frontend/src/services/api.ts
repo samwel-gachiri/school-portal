@@ -197,7 +197,10 @@ export const manualFeesApi = {
     apiService.get('/manual-fees/bank-types'),
   
   checkDuplicatePayment: (params: { adm: number; ref: string; bank: string }) =>
-    apiService.get('/manual-fees/check-duplicate', params)
+    apiService.get('/manual-fees/check-duplicate', params),
+
+  recalculateBalances: (adm?: number) =>
+    apiService.post('/manual-fees/recalculate-balances', { adm })
 }
 
 // Payment API
@@ -245,4 +248,33 @@ export const receiptsApi = {
     apiService.getBlob('/receipts/logo')
 }
 
-export default apiService
+// Charges API
+export const chargesApi = {
+  getDefaults: () =>
+    apiService.get('/charges/defaults'),
+
+  searchStudents: (query: string) =>
+    apiService.get('/charges/students/search', { query }),
+
+  getStudentCharges: (adm: number) =>
+    apiService.get(`/charges/students/${adm}`),
+
+  createStudentCharge: (data: { adm: number; name: string; amount: number; term: string; yearAss: number; dateAss: string }) =>
+    apiService.post('/charges/student', data),
+
+  createClassCharge: (data: { classId: number; name: string; amount: number; term: string; yearAss: number; dateAss: string }) =>
+    apiService.post('/charges/class', data),
+
+  updateCharge: (chargeId: number, data: { name: string; amount: number; term: string; yearAss: number; dateAss: string; reason: string }) =>
+    apiService.put(`/charges/${chargeId}`, data),
+
+  deleteCharge: (chargeId: number, data?: { reason?: string }) => {
+    const reasonParam = data?.reason ? `?reason=${encodeURIComponent(data.reason)}` : ''
+    return apiService.delete(`/charges/${chargeId}${reasonParam}`, {
+      params: data?.reason ? { reason: data.reason } : undefined,
+      data: data
+    })
+  }
+}
+
+export default apiService

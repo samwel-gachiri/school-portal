@@ -19,6 +19,7 @@ router.put("/payments/:paymentId", manualFeeController.updatePayment);
 router.delete("/payments/:paymentId", manualFeeController.deletePayment);
 router.get("/bank-types", manualFeeController.getBankTypes);
 router.get("/check-duplicate", manualFeeController.checkDuplicatePayment);
+router.post("/recalculate-balances", manualFeeController.recalculateBalances);
 
 console.log("✅ Manual fees routes configured:", {
   "GET /students/search": "searchStudents",

@@ -219,11 +219,17 @@ export class PaymentService {
 
       const paycountId = (paycountResult as any).insertId;
 
-      // Update student balance
+      // Update student balance from ledger source of truth
       await this.executeQuery(
         connection,
-        'UPDATE student SET balance = ? WHERE adm = ?',
-        [record.newBalance, student.adm]
+        `UPDATE student s 
+         SET s.balance = (
+           COALESCE((SELECT SUM(c.amount) FROM charges c WHERE c.adm = s.adm), 0)    
+           -     
+           COALESCE((SELECT SUM(p.amount) FROM payment p WHERE p.adm = s.adm), 0)
+         )
+         WHERE s.adm = ?`,
+        [student.adm]
       );
 
       // Update student paycount

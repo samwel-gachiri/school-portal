@@ -337,11 +337,16 @@ export class EquityTransactionService {
         ]
       );
 
-      // Update student balance
-      const newBalance = transaction.balance - transaction.amount;
+      // Update student balance from ledger source of truth
       await this.db.query(
-        `UPDATE student SET balance = ? WHERE adm = ?`,
-        [newBalance, transaction.matched_student_adm]
+        `UPDATE student s 
+         SET s.balance = (
+           COALESCE((SELECT SUM(c.amount) FROM charges c WHERE c.adm = s.adm), 0)    
+           -     
+           COALESCE((SELECT SUM(p.amount) FROM payment p WHERE p.adm = s.adm), 0)
+         )
+         WHERE s.adm = ?`,
+        [transaction.matched_student_adm]
       );
 
       // Update transaction status

@@ -29,6 +29,29 @@ export interface PaymentDeletedSmsData {
   newBalance: number;
 }
 
+export interface ChargeModifiedSmsData {
+  chargeId: number;
+  adm: number;
+  studentName: string;
+  username: string;
+  reason?: string;
+  oldAmount: number;
+  newAmount: number;
+  chargeName: string;
+  newBalance: number;
+}
+
+export interface ChargeDeletedSmsData {
+  chargeId: number;
+  adm: number;
+  studentName: string;
+  username: string;
+  reason?: string;
+  amount: number;
+  chargeName: string;
+  newBalance: number;
+}
+
 export const smsService = {
   /**
    * Normalizes Kenyan phone numbers to international standard without '+' (e.g. 2547XXXXXXXX)
@@ -215,6 +238,41 @@ export const smsService = {
       await this.sendAlertToRecipients(message);
     } catch (error: any) {
       logger.error(`Error in notifyPaymentDeleted SMS: ${error.message || error}`);
+    }
+  },
+
+  /**
+   * Sends an SMS alert when a charge is modified, including user reason
+   */
+  async notifyChargeModified(data: ChargeModifiedSmsData): Promise<void> {
+    try {
+      const formattedOldAmount = Number(data.oldAmount).toLocaleString('en-KE');
+      const formattedNewAmount = Number(data.newAmount).toLocaleString('en-KE');
+      const formattedNewBalance = Number(data.newBalance).toLocaleString('en-KE');
+      const reasonText = data.reason ? ` Reason: "${data.reason}".` : '';
+
+      const message = `ALERT: Charge #${data.chargeId} (${data.chargeName}) for Adm ${data.adm} (${data.studentName}) was MODIFIED by user '${data.username}'.${reasonText} Amount: KES ${formattedOldAmount} -> KES ${formattedNewAmount}. New Bal: KES ${formattedNewBalance}.`;
+
+      await this.sendAlertToRecipients(message);
+    } catch (error: any) {
+      logger.error(`Error in notifyChargeModified SMS: ${error.message || error}`);
+    }
+  },
+
+  /**
+   * Sends an SMS alert when a charge is deleted, including user reason
+   */
+  async notifyChargeDeleted(data: ChargeDeletedSmsData): Promise<void> {
+    try {
+      const formattedAmount = Number(data.amount).toLocaleString('en-KE');
+      const formattedNewBalance = Number(data.newBalance).toLocaleString('en-KE');
+      const reasonText = data.reason ? ` Reason: "${data.reason}".` : '';
+
+      const message = `ALERT: Charge #${data.chargeId} of KES ${formattedAmount} (${data.chargeName}) for Adm ${data.adm} (${data.studentName}) was DELETED by user '${data.username}'.${reasonText} Restored Bal: KES ${formattedNewBalance}.`;
+
+      await this.sendAlertToRecipients(message);
+    } catch (error: any) {
+      logger.error(`Error in notifyChargeDeleted SMS: ${error.message || error}`);
     }
   },
 };

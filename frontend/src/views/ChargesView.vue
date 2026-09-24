@@ -98,6 +98,7 @@
                     <th class="px-2 py-1">Charge Name</th>
                     <th class="px-2 py-1">Term/Year</th>
                     <th class="px-2 py-1 text-right">Amount</th>
+                    <th class="px-2 py-1 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -106,6 +107,15 @@
                     <td class="px-2 py-1">{{ charge.name }}</td>
                     <td class="px-2 py-1">{{ charge.term }} {{ charge.yearAss }}</td>
                     <td class="px-2 py-1 text-right">{{ formatAmount(charge.amount) }}</td>
+                    <td class="px-2 py-1 text-center">
+                      <button 
+                        type="button" 
+                        @click="openEditCharge(charge)"
+                        class="text-indigo-600 hover:text-indigo-900 font-medium py-0.5 px-1.5 rounded hover:bg-indigo-50 border border-indigo-200"
+                      >
+                        Edit
+                      </button>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -205,15 +215,106 @@
         </form>
       </div>
     </div>
+
+    <!-- Edit Charge Modal -->
+    <div v-if="showEditModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+        <h3 class="text-lg font-medium text-gray-900 mb-1">Edit Charge</h3>
+        <p class="text-xs text-gray-500 mb-4">Adjust charge details or remove charge.</p>
+
+        <form @submit.prevent="submitEditCharge" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Charge Name *</label>
+            <input v-model="editForm.name" type="text" required class="w-full px-3 py-2 border rounded-md" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Amount (KES) *</label>
+            <input v-model="editForm.amount" type="number" step="0.01" min="0.01" required class="w-full px-3 py-2 border rounded-md" />
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Term *</label>
+              <select v-model="editForm.term" required class="w-full px-3 py-2 border rounded-md">
+                <option value="ONE">ONE</option>
+                <option value="TWO">TWO</option>
+                <option value="THREE">THREE</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Year *</label>
+              <input v-model="editForm.yearAss" type="number" required class="w-full px-3 py-2 border rounded-md" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+            <input v-model="editForm.dateAss" type="date" required class="w-full px-3 py-2 border rounded-md" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Reason for Modification *</label>
+            <input v-model="editForm.reason" type="text" required placeholder="e.g. Corrected fee amount" class="w-full px-3 py-2 border rounded-md" />
+          </div>
+
+          <div class="flex space-x-3 pt-4">
+            <button type="button" @click="showEditModal = false" class="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
+            <button type="button" @click="handleDeleteFromEditModal" class="px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-md hover:bg-red-100">Delete charge</button>
+            <button type="submit" :disabled="submittingEdit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400">
+              {{ submittingEdit ? 'Saving...' : 'Save Changes' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div v-if="showDeleteModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+        <h3 class="text-lg font-medium text-gray-900 mb-2">Delete Charge</h3>
+        <p class="text-sm text-gray-600 mb-2">
+          Are you sure you want to delete charge <strong>{{ chargeToDelete?.name }}</strong> of <strong class="text-red-600">KES {{ formatAmount(chargeToDelete?.amount || 0) }}</strong>?
+        </p>
+        <p class="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-md border border-amber-200 mb-4">
+          ⚠️ Deleting this charge will reduce the student's fee balance accordingly.
+        </p>
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Reason for Deletion *</label>
+          <textarea v-model="deleteReason" rows="2" required placeholder="e.g. Duplicated charge entry" class="w-full px-3 py-2 border rounded-md"></textarea>
+        </div>
+
+        <div class="flex space-x-3">
+          <button type="button" @click="showDeleteModal = false" :disabled="deleting" class="flex-1 px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
+          <button type="button" @click="executeDelete" :disabled="deleting" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-red-400">
+            {{ deleting ? 'Deleting...' : 'Confirm Delete' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import api from '@/services/api'
+import api, { chargesApi } from '@/services/api'
 import { useToast } from 'vue-toastification'
 
 const toast = useToast()
+
+const showEditModal = ref(false)
+const submittingEdit = ref(false)
+const currentEditingCharge = ref<any>(null)
+const editForm = ref({
+  name: '',
+  amount: '',
+  term: 'ONE',
+  yearAss: new Date().getFullYear(),
+  dateAss: '',
+  reason: ''
+})
+
+const showDeleteModal = ref(false)
+const deleting = ref(false)
+const deleteReason = ref('')
+const chargeToDelete = ref<any>(null)
 
 const searchQuery = ref('')
 const searchResults = ref<any[]>([])
@@ -358,5 +459,115 @@ const formatAmount = (amt: number) => {
 const formatDate = (dStr: string) => {
   if (!dStr) return '-'
   return new Date(dStr).toLocaleDateString('en-KE')
+}
+
+const openEditCharge = (charge: any) => {
+  currentEditingCharge.value = charge
+  let formattedDate = ''
+  if (charge.dateAss) {
+    try {
+      formattedDate = new Date(charge.dateAss).toISOString().split('T')[0]
+    } catch {
+      formattedDate = charge.dateAss
+    }
+  } else {
+    formattedDate = new Date().toISOString().split('T')[0]
+  }
+
+  editForm.value = {
+    name: charge.name || '',
+    amount: String(charge.amount || ''),
+    term: charge.term || 'ONE',
+    yearAss: charge.yearAss || new Date().getFullYear(),
+    dateAss: formattedDate,
+    reason: ''
+  }
+  showEditModal.value = true
+}
+
+const handleDeleteFromEditModal = () => {
+  if (!currentEditingCharge.value) return
+  chargeToDelete.value = currentEditingCharge.value
+  deleteReason.value = ''
+  showEditModal.value = false
+  showDeleteModal.value = true
+}
+
+const submitEditCharge = async () => {
+  if (!currentEditingCharge.value) return
+  if (!editForm.value.name?.trim()) {
+    toast.warning('Please enter a charge name')
+    return
+  }
+  if (!editForm.value.amount || parseFloat(editForm.value.amount) <= 0) {
+    toast.warning('Charge amount must be positive')
+    return
+  }
+  if (!editForm.value.reason?.trim()) {
+    toast.warning('Please provide a reason for modifying this charge')
+    return
+  }
+
+  submittingEdit.value = true
+  try {
+    const payload = {
+      name: editForm.value.name.replace(/\s+/g, '_').toUpperCase(),
+      amount: parseFloat(editForm.value.amount),
+      term: editForm.value.term,
+      yearAss: parseInt(String(editForm.value.yearAss), 10),
+      dateAss: editForm.value.dateAss,
+      reason: editForm.value.reason.trim()
+    }
+    const res = await chargesApi.updateCharge(currentEditingCharge.value.chargeId, payload)
+    if (res.success) {
+      toast.success('Charge updated successfully!')
+      showEditModal.value = false
+      if (selectedStudent.value) {
+        selectedStudent.value.balance = res.data.newBalance
+        // Refresh charge history
+        const histRes = await chargesApi.getStudentCharges(selectedStudent.value.adm)
+        if (histRes.success && histRes.data) {
+          chargeHistory.value = histRes.data
+        }
+      }
+    }
+  } catch (error: any) {
+    toast.error(error.response?.data?.message || 'Failed to update charge')
+  } finally {
+    submittingEdit.value = false
+  }
+}
+
+const executeDelete = async () => {
+  if (!chargeToDelete.value) return
+  if (!deleteReason.value?.trim()) {
+    toast.warning('Please provide a reason for deleting this charge')
+    return
+  }
+
+  deleting.value = true
+  try {
+    const res = await chargesApi.deleteCharge(chargeToDelete.value.chargeId, {
+      reason: deleteReason.value.trim()
+    })
+    if (res.success) {
+      toast.success('Charge deleted successfully and balance recalculated!')
+      showDeleteModal.value = false
+      chargeToDelete.value = null
+      deleteReason.value = ''
+      if (selectedStudent.value) {
+        selectedStudent.value.balance = res.data.newBalance
+        // Refresh charge history
+        const histRes = await chargesApi.getStudentCharges(selectedStudent.value.adm)
+        if (histRes.success && histRes.data) {
+          chargeHistory.value = histRes.data
+        }
+      }
+    }
+  } catch (error: any) {
+    toast.error(error.response?.data?.message || 'Failed to delete charge')
+  } finally {
+    deleting.value = false
+  }
 }
 </script>

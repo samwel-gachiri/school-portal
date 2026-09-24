@@ -12,5 +12,8 @@ router.get("/students/search", chargeController.searchStudents);
 router.get("/students/:adm", chargeController.getStudentCharges);
 router.post("/student", chargeController.createStudentCharge);
 router.post("/class", chargeController.createClassCharge);
+router.put("/:chargeId", chargeController.updateCharge);
+router.delete("/:chargeId", chargeController.deleteCharge);
 
 export default router;
+

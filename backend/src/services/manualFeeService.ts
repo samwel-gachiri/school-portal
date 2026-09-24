@@ -341,7 +341,7 @@ export const manualFeeService = {
     await db.queryRaw("START TRANSACTION");
 
     try {
-      // Insert payment record
+      // 1. Insert payment record (temporary initial balance before exact recalculation)
       const paymentResult = await db.query(
         `
         INSERT INTO payment (adm, bank, ref, amount, dop, balance, term, year_paid, name)
@@ -353,7 +353,7 @@ export const manualFeeService = {
           paymentData.ref || null,
           paymentData.amount,
           paymentData.date,
-          newBalance,
+          student.balance,
           term,
           year,
           'SCHOOL_FEES',
@@ -362,17 +362,35 @@ export const manualFeeService = {
 
       const paymentId = (paymentResult as any).insertId;
 
-      // Update student balance and paycount
+      // 2. Recalculate student balance from charges - payments and increment paycount
       await db.query(
         `
-        UPDATE student 
-        SET balance = ?, paycount = paycount + 1 
-        WHERE adm = ?
+        UPDATE student s 
+        SET s.balance = (
+          COALESCE((SELECT SUM(c.amount) FROM charges c WHERE c.adm = s.adm), 0)    
+          -     
+          COALESCE((SELECT SUM(p.amount) FROM payment p WHERE p.adm = s.adm), 0)
+        ),
+        s.paycount = s.paycount + 1 
+        WHERE s.adm = ?
       `,
-        [newBalance, paymentData.adm]
+        [paymentData.adm]
       );
 
-      // Update class balance
+      // 3. Fetch exact recalculated student balance
+      const studentAfter = await db.query(
+        `SELECT balance FROM student WHERE adm = ?`,
+        [paymentData.adm]
+      );
+      const newBalance = Number(studentAfter?.[0]?.balance ?? 0);
+
+      // 4. Update payment record with exact recalculated balance
+      await db.query(
+        `UPDATE payment SET balance = ? WHERE payment_id = ?`,
+        [newBalance, paymentId]
+      );
+
+      // 5. Update class balance
       await db.query(
         `
         UPDATE class 
@@ -382,17 +400,7 @@ export const manualFeeService = {
         [paymentData.amount, student.class]
       );
 
-      // Update school totals (skip for now as table structure is different)
-      // await db.query(
-      //   `
-      //   UPDATE school
-      //   SET paid = paid + ?, balance = balance - ?
-      //   WHERE year = ? AND term = ?
-      //   `,
-      //   [paymentData.amount, paymentData.amount, year, term]
-      // );
-
-      // Insert paycount record
+      // 6. Insert paycount record
       await db.query(
         `
         INSERT INTO paycount (adm, payment, amount, balance, term, year, bank, ref, dop, date_ass)
@@ -515,7 +523,6 @@ export const manualFeeService = {
     }
 
     const amountDiff = paymentData.amount - Number(currentPayment.amount);
-    const newStudentBalance = Number(student.balance) - amountDiff;
 
     const newRefKey = paymentData.ref ? `${paymentData.bank}-${paymentData.ref}` : null;
     if (newRefKey && paymentData.bank !== "CHEQUE") {
@@ -528,31 +535,11 @@ export const manualFeeService = {
     try {
       await db.queryRaw("START TRANSACTION");
 
-      // Update student balance
-      await db.query(
-        `
-        UPDATE student 
-        SET balance = ? 
-        WHERE adm = ?
-      `,
-        [newStudentBalance, currentPayment.adm]
-      );
-
-      // Update class balance
-      await db.query(
-        `
-        UPDATE class 
-        SET balance = balance - ? 
-        WHERE class_id = ?
-      `,
-        [amountDiff, student.class]
-      );
-
-      // Update payment record
+      // 1. Update payment record first so SUM(payment) reflects the new amount
       await db.query(
         `
         UPDATE payment 
-        SET bank = ?, ref = ?, amount = ?, dop = ?, balance = balance - ?
+        SET bank = ?, ref = ?, amount = ?, dop = ?
         WHERE payment_id = ?
       `,
         [
@@ -560,16 +547,15 @@ export const manualFeeService = {
           paymentData.ref || null,
           paymentData.amount,
           paymentData.date,
-          amountDiff,
           paymentId,
         ]
       );
 
-      // Update paycount record
+      // 2. Update paycount record
       await db.query(
         `
         UPDATE paycount 
-        SET bank = ?, ref = ?, amount = ?, dop = ?, balance = balance - ?
+        SET bank = ?, ref = ?, amount = ?, dop = ?
         WHERE payment = ?
       `,
         [
@@ -577,9 +563,49 @@ export const manualFeeService = {
           paymentData.ref || null,
           paymentData.amount,
           paymentData.date,
-          amountDiff,
           paymentId,
         ]
+      );
+
+      // 3. Recalculate student balance from charges - payments
+      await db.query(
+        `
+        UPDATE student s 
+        SET s.balance = (
+          COALESCE((SELECT SUM(c.amount) FROM charges c WHERE c.adm = s.adm), 0)    
+          -     
+          COALESCE((SELECT SUM(p.amount) FROM payment p WHERE p.adm = s.adm), 0)
+        )
+        WHERE s.adm = ?
+      `,
+        [currentPayment.adm]
+      );
+
+      // 4. Fetch the recalculated student balance
+      const studentAfter = await db.query(
+        `SELECT balance FROM student WHERE adm = ?`,
+        [currentPayment.adm]
+      );
+      const newStudentBalance = Number(studentAfter?.[0]?.balance ?? 0);
+
+      // 5. Update running balance on payment and paycount records
+      await db.query(
+        `UPDATE payment SET balance = ? WHERE payment_id = ?`,
+        [newStudentBalance, paymentId]
+      );
+      await db.query(
+        `UPDATE paycount SET balance = ? WHERE payment = ?`,
+        [newStudentBalance, paymentId]
+      );
+
+      // 6. Update class balance
+      await db.query(
+        `
+        UPDATE class 
+        SET balance = balance - ? 
+        WHERE class_id = ?
+      `,
+        [amountDiff, student.class]
       );
 
       // Log the transaction
@@ -673,38 +699,17 @@ export const manualFeeService = {
     const payment = existingPayments[0];
 
     const student = await this.getStudentDetails(payment.adm);
-    const reversedBalance = Number(student.balance) + Number(payment.amount);
 
     await db.queryRaw("START TRANSACTION");
 
     try {
-      // 1. Restore student balance and decrement paycount
-      await db.query(
-        `
-        UPDATE student 
-        SET balance = ?, paycount = GREATEST(0, paycount - 1) 
-        WHERE adm = ?
-      `,
-        [reversedBalance, payment.adm]
-      );
-
-      // 2. Restore class balance
-      await db.query(
-        `
-        UPDATE class 
-        SET balance = balance + ? 
-        WHERE class_id = ?
-      `,
-        [payment.amount, student.class]
-      );
-
-      // 3. Remove paycount record
+      // 1. Remove paycount record
       await db.query(
         `DELETE FROM paycount WHERE payment = ?`,
         [paymentId]
       );
 
-      // 4. Remove any print receipt records for this payment
+      // 2. Remove any print receipt records for this payment
       try {
         await db.query(
           `DELETE FROM printtable WHERE receiptNO = ?`,
@@ -714,13 +719,45 @@ export const manualFeeService = {
         // Continue even if printtable doesn't have receiptNO or is missing
       }
 
-      // 5. Delete payment record
+      // 3. Delete payment record (must be deleted before student balance recalculation)
       await db.query(
         `DELETE FROM payment WHERE payment_id = ?`,
         [paymentId]
       );
 
-      // 6. Log the deletion
+      // 4. Recalculate student balance from charges - payments and decrement paycount
+      await db.query(
+        `
+        UPDATE student s 
+        SET s.balance = (
+          COALESCE((SELECT SUM(c.amount) FROM charges c WHERE c.adm = s.adm), 0)    
+          -     
+          COALESCE((SELECT SUM(p.amount) FROM payment p WHERE p.adm = s.adm), 0)
+        ),
+        s.paycount = GREATEST(0, s.paycount - 1) 
+        WHERE s.adm = ?
+      `,
+        [payment.adm]
+      );
+
+      // 5. Fetch the recalculated student balance
+      const studentAfter = await db.query(
+        `SELECT balance FROM student WHERE adm = ?`,
+        [payment.adm]
+      );
+      const reversedBalance = Number(studentAfter?.[0]?.balance ?? 0);
+
+      // 6. Restore class balance
+      await db.query(
+        `
+        UPDATE class 
+        SET balance = balance + ? 
+        WHERE class_id = ?
+      `,
+        [payment.amount, student.class]
+      );
+
+      // 7. Log the deletion
       await db.query(
         `
         INSERT INTO processing_log (user_id, action_type, details)
@@ -786,5 +823,44 @@ export const manualFeeService = {
       { id: "BANK_OF_AFRICA", name: "Bank of Africa", format: "7 digits" },
       { id: "SIM_PAY", name: "Sim Pay", format: "10 digits" },
     ];
+  },
+
+  /**
+   * Recalculates student balance directly from ledger source of truth:
+   * UPDATE student s SET s.balance = (
+   *   COALESCE((SELECT SUM(c.amount) FROM charges c WHERE c.adm = s.adm), 0) -
+   *   COALESCE((SELECT SUM(p.amount) FROM payment p WHERE p.adm = s.adm), 0)
+   * )
+   */
+  async recalculateStudentBalance(adm?: number): Promise<number | void> {
+    const db = DatabaseConnection.getInstance();
+    if (adm) {
+      await db.query(
+        `
+        UPDATE student s 
+        SET s.balance = (
+          COALESCE((SELECT SUM(c.amount) FROM charges c WHERE c.adm = s.adm), 0)    
+          -     
+          COALESCE((SELECT SUM(p.amount) FROM payment p WHERE p.adm = s.adm), 0)
+        )
+        WHERE s.adm = ?
+      `,
+        [adm]
+      );
+      const res = await db.query(
+        `SELECT balance FROM student WHERE adm = ?`,
+        [adm]
+      );
+      return Number(res?.[0]?.balance ?? 0);
+    } else {
+      await db.query(`
+        UPDATE student s 
+        SET s.balance = (
+          COALESCE((SELECT SUM(c.amount) FROM charges c WHERE c.adm = s.adm), 0)    
+          -     
+          COALESCE((SELECT SUM(p.amount) FROM payment p WHERE p.adm = s.adm), 0)
+        )
+      `);
+    }
   },
 };

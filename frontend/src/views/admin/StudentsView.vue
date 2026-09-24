@@ -360,6 +360,18 @@
                                     Edit
                                   </button>
                                 </div>
+                                <div v-else-if="transaction.type === 'CHARGE'" class="mt-2 flex items-center text-xs">
+                                  <button 
+                                    type="button" 
+                                    @click.stop="openEditChargeModal(transaction)" 
+                                    class="text-amber-700 hover:text-amber-900 font-medium flex items-center transition-colors py-0.5 px-2 rounded hover:bg-amber-50 border border-amber-300"
+                                  >
+                                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                    Edit Charge
+                                  </button>
+                                </div>
                               </div>
                               <div class="text-right text-sm whitespace-nowrap text-gray-500 flex flex-col items-end">
                                 <time :datetime="transaction.date" class="font-medium text-gray-600">{{ formatDate(transaction.date) }}</time>
@@ -481,13 +493,125 @@
         </div>
       </div>
     </div>
+
+    <!-- Edit Charge Modal -->
+    <div v-if="showEditChargeModal" class="fixed inset-0 overflow-y-auto z-[70]">
+      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true" @click="showEditChargeModal = false">
+          <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full sm:p-6">
+          <div>
+            <div class="mt-2 text-center sm:mt-0 sm:text-left">
+              <h3 class="text-lg leading-6 font-medium text-gray-900">Edit Charge</h3>
+              <p class="text-xs text-gray-500 mt-1">Adjust charge details, name, or amount.</p>
+            </div>
+            <form @submit.prevent="submitEditCharge" class="mt-4 space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Charge Name *</label>
+                <input type="text" v-model="editChargeForm.name" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 sm:text-sm" placeholder="e.g. TUITION, EXAM_FEE">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Amount (KES) *</label>
+                <input type="number" v-model.number="editChargeForm.amount" min="1" step="any" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 sm:text-sm">
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">Term *</label>
+                  <select v-model="editChargeForm.term" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 sm:text-sm">
+                    <option value="ONE">Term 1</option>
+                    <option value="TWO">Term 2</option>
+                    <option value="THREE">Term 3</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">Year *</label>
+                  <input type="number" v-model.number="editChargeForm.yearAss" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 sm:text-sm">
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Date Charged *</label>
+                <input type="date" v-model="editChargeForm.dateAss" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 sm:text-sm">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Reason for Modification *</label>
+                <input type="text" v-model="editChargeForm.reason" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 sm:text-sm" placeholder="e.g. Corrected fee amount / waived activity">
+              </div>
+              <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-3 sm:gap-3 sm:grid-flow-row-dense">
+                <button type="submit" :disabled="submittingChargeEdit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-3 disabled:bg-gray-400">
+                  {{ submittingChargeEdit ? 'Saving...' : 'Save Changes' }}
+                </button>
+                <button type="button" @click="handleDeleteChargeFromEditModal" :disabled="submittingChargeEdit" class="mt-3 sm:mt-0 w-full inline-flex justify-center rounded-md border border-red-300 shadow-sm px-4 py-2 bg-red-50 text-sm font-medium text-red-700 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:col-start-2">
+                  Delete charge
+                </button>
+                <button type="button" @click="showEditChargeModal = false" :disabled="submittingChargeEdit" class="mt-3 sm:mt-0 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-1">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Charge Confirmation Modal -->
+    <div v-if="showDeleteChargeModal" class="fixed inset-0 overflow-y-auto z-[70]">
+      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true" @click="showDeleteChargeModal = false">
+          <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full sm:p-6">
+          <div class="sm:flex sm:items-start">
+            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+              <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+              <h3 class="text-lg leading-6 font-medium text-gray-900">Delete Charge</h3>
+              <div class="mt-2">
+                <p class="text-sm text-gray-500">
+                  Are you sure you want to delete this charge of <strong class="text-red-600">{{ formatCurrency(chargeToDelete?.amount || 0) }}</strong>?
+                </p>
+                <div class="text-xs text-gray-500 mt-1">
+                  Charge: <span class="font-semibold">{{ chargeToDelete?.name }}</span> (Term {{ chargeToDelete?.term }} {{ chargeToDelete?.year }})
+                </div>
+                <div class="mt-3">
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Reason for Deletion *</label>
+                  <textarea 
+                    v-model="deleteChargeReason" 
+                    rows="2" 
+                    required 
+                    class="block w-full border border-gray-300 rounded-md shadow-sm py-1.5 px-2.5 focus:outline-none focus:ring-red-500 focus:border-red-500 text-sm" 
+                    placeholder="e.g. Charge applied incorrectly / duplicated"
+                  ></textarea>
+                </div>
+                <p class="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-md border border-amber-200 mt-3 leading-relaxed">
+                  ⚠️ <strong>Warning:</strong> Deleting this charge will reduce the student's outstanding fee balance by <strong>{{ formatCurrency(chargeToDelete?.amount || 0) }}</strong>.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+            <button type="button" @click="executeDeleteCharge" :disabled="deletingCharge" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:bg-red-400">
+              {{ deletingCharge ? 'Deleting...' : 'Confirm Delete' }}
+            </button>
+            <button type="button" @click="showDeleteChargeModal = false" :disabled="deletingCharge" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useToast } from 'vue-toastification'
-import api, { manualFeesApi } from '@/services/api'
+import api, { manualFeesApi, chargesApi } from '@/services/api'
 
 const toast = useToast()
 
@@ -517,6 +641,25 @@ const deletingPayment = ref(false)
 const deletePaymentReason = ref('')
 const paymentToDelete = ref<any>(null)
 const currentEditingPayment = ref<any>(null)
+
+const showEditChargeModal = ref(false)
+const submittingChargeEdit = ref(false)
+const editingChargeId = ref<number | null>(null)
+const currentEditingCharge = ref<any>(null)
+const editChargeForm = ref({
+  name: '',
+  amount: 0,
+  term: 'ONE',
+  yearAss: new Date().getFullYear(),
+  dateAss: '',
+  reason: ''
+})
+
+const showDeleteChargeModal = ref(false)
+const deletingCharge = ref(false)
+const deleteChargeReason = ref('')
+const chargeToDelete = ref<any>(null)
+
 
 const students = ref<any[]>([])
 const classes = ref<any[]>([])
@@ -861,4 +1004,114 @@ const executeDeletePayment = async () => {
     deletingPayment.value = false
   }
 }
+
+const openEditChargeModal = (transaction: any) => {
+  currentEditingCharge.value = transaction
+  editingChargeId.value = transaction.id
+  let formattedDate = ''
+  if (transaction.date) {
+    try {
+      formattedDate = new Date(transaction.date).toISOString().split('T')[0]
+    } catch {
+      formattedDate = transaction.date
+    }
+  } else {
+    formattedDate = new Date().toISOString().split('T')[0]
+  }
+
+  editChargeForm.value = {
+    name: transaction.name || '',
+    amount: Number(transaction.amount) || 0,
+    term: transaction.term || 'ONE',
+    yearAss: transaction.year || new Date().getFullYear(),
+    dateAss: formattedDate,
+    reason: ''
+  }
+  showEditChargeModal.value = true
+}
+
+const handleDeleteChargeFromEditModal = () => {
+  if (!currentEditingCharge.value) return
+  showEditChargeModal.value = false
+  confirmDeleteCharge(currentEditingCharge.value)
+}
+
+const submitEditCharge = async () => {
+  if (!editingChargeId.value) return
+  if (!editChargeForm.value.name?.trim()) {
+    toast.warning('Please provide a charge name')
+    return
+  }
+  if (!editChargeForm.value.amount || editChargeForm.value.amount <= 0) {
+    toast.warning('Charge amount must be positive')
+    return
+  }
+  if (!editChargeForm.value.reason?.trim()) {
+    toast.warning('Please provide a reason for the modification')
+    return
+  }
+  submittingChargeEdit.value = true
+  try {
+    const payload = {
+      name: editChargeForm.value.name.trim(),
+      amount: Number(editChargeForm.value.amount),
+      term: editChargeForm.value.term,
+      yearAss: Number(editChargeForm.value.yearAss),
+      dateAss: editChargeForm.value.dateAss,
+      reason: editChargeForm.value.reason.trim()
+    }
+    const res = await chargesApi.updateCharge(editingChargeId.value, payload)
+    if (res.success) {
+      toast.success('Charge updated successfully!')
+      showEditChargeModal.value = false
+      if (selectedStudent.value?.student?.adm) {
+        await openStudentDetails({ adm: selectedStudent.value.student.adm })
+      }
+      if (hasSearched.value && searchQuery.value) {
+        await searchStudents()
+      }
+    }
+  } catch (error: any) {
+    toast.error(error.response?.data?.message || error.message || 'Failed to update charge')
+  } finally {
+    submittingChargeEdit.value = false
+  }
+}
+
+const confirmDeleteCharge = (transaction: any) => {
+  chargeToDelete.value = transaction
+  deleteChargeReason.value = ''
+  showDeleteChargeModal.value = true
+}
+
+const executeDeleteCharge = async () => {
+  if (!chargeToDelete.value) return
+  if (!deleteChargeReason.value?.trim()) {
+    toast.warning('Please provide a reason for deleting this charge')
+    return
+  }
+  deletingCharge.value = true
+  try {
+    const res = await chargesApi.deleteCharge(chargeToDelete.value.id, {
+      reason: deleteChargeReason.value.trim()
+    })
+    if (res.success) {
+      toast.success('Charge deleted successfully and balance recalculated!')
+      showDeleteChargeModal.value = false
+      chargeToDelete.value = null
+      deleteChargeReason.value = ''
+      if (selectedStudent.value?.student?.adm) {
+        await openStudentDetails({ adm: selectedStudent.value.student.adm })
+      }
+      if (hasSearched.value && searchQuery.value) {
+        await searchStudents()
+      }
+    }
+  } catch (error: any) {
+    toast.error(error.response?.data?.message || error.message || 'Failed to delete charge')
+  } finally {
+    deletingCharge.value = false
+  }
+}
 </script>
+
